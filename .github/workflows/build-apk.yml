@@ -1,0 +1,56 @@
+name: Build Ink Squadron APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      KS: ${{ secrets.KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: InkSquadron-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+
+      # Optional: signed release build (AAB for Google Play + APK).
+      # Add repository secrets KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD to enable.
+      - name: Build signed release
+        if: env.KS != ''
+        env:
+          INK_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          INK_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          INK_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export INK_KEYSTORE_FILE="$RUNNER_TEMP/release.jks"
+          ./gradlew --no-daemon assembleRelease bundleRelease
+
+      - name: Upload release
+        if: env.KS != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: InkSquadron-release
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab

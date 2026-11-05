@@ -1,0 +1,45 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.inksquadron.game'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.inksquadron.game"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+
+    // Optional release signing: set these 4 environment variables (or GitHub secrets) to sign release builds.
+    def ksFile = System.getenv("INK_KEYSTORE_FILE")
+    signingConfigs {
+        release {
+            if (ksFile != null && new File(ksFile).exists()) {
+                storeFile file(ksFile)
+                storePassword System.getenv("INK_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("INK_KEY_ALIAS")
+                keyPassword System.getenv("INK_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (ksFile != null && new File(ksFile).exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
