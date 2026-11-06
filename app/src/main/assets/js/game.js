@@ -3,6 +3,7 @@
    ========================================================= */
 function drawBoardBase(dt, opts = {}) {
   const cell = BL.cell, vs = M.mode === 'versus' || M.rt === 'rtvs';
+  drawScenery();
   const midY = rowY(M.G / 2);
   ctx.save(); ctx.strokeStyle = 'rgba(27,42,94,0.55)'; ctx.lineWidth = 3; ctx.setLineDash([16, 10]); ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke(); ctx.restore();
   if (vs) {

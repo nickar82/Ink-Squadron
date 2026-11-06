@@ -119,6 +119,7 @@ function newMatch(cfg) {
     clock: cfg.clock ? { limit: cfg.clock, left: cfg.clock } : null, odStart: cfg.odStart || 22, netQ: [], netBusy: false, rocketKills: 0
   };
   if (sides[1].ships.some(s => s.type === 'boss')) M.topRow -= 1.2;
+  M.scenery = makeScenery(camp ? cfg.level * 31 + 7 : cfg.seed);
   if (cfg.bunkers) placeBunkers(cfg.bunkers, r);
   scene = SCENES.game; computeBL();
   if (typeof onMatchStart === 'function') onMatchStart();

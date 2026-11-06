@@ -21,6 +21,7 @@ function startRT(kind) {
     topRow: -2.6, bottomRow: G + 2 + 2.6, wave: 0, score: 0, credits: vs ? 0 : 3, timeLeft: kind === 'timeattack' ? save.ta.dur : 0, dur: save.ta.dur,
     phase: 'play', holds: {}, drags: {}, ai: { think: 1 }, bonus: null, cont: null, banner: null, flash: 0, calm: 0, cuts: 0
   };
+  M.scenery = sceneryNow();
   scene = SCENES.arena; computeBL();
   if (!vs) nextWave(); else { M.phase = 'countdown'; M.cd = 3.2; }
   if (typeof onMatchStart === 'function') onMatchStart();
@@ -55,7 +56,7 @@ function startWarp() {
   for (const sd of M.sides) for (const s of sd.ships) for (const g of s.guns) { if (g.m > 0) eraseGun(s, g); g.ink = RT.INK; }
   M.sides[1].ships = []; M.decals = []; M.splats = []; M.bunkers = [];
   sfx.rocket(); setTimeout(() => sfx.zap(), 600);
-  M.onGo = null; M.afterBreak = () => { placeBunkers(Math.min(3, M.sector - 1), Math.random); nextWave(); };
+  M.onGo = null; M.afterBreak = () => { placeBunkers(Math.min(3, M.sector - 1), Math.random); M.scenery = sceneryNow(); nextWave(); };
   M.onGoSet = true;
 }
 function startNuke() {
