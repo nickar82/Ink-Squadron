@@ -28,6 +28,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 applySeason(); resize();
+save.stats.sessions = (save.stats.sessions || 0) + 1; persist();
 try { screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(() => { }); } catch (e) { }
 if (!save.lang) { SCENES.lang.from = null; go('lang'); } else go('menu');
 fade = 0;

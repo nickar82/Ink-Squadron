@@ -3,6 +3,8 @@ package com.inksquadron.game;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.os.Build;
@@ -212,6 +214,15 @@ public class MainActivity extends Activity {
         // ---- ads ----
         @JavascriptInterface public void adsInterstitial(String reason) { a.ads.showInterstitial(); }
         @JavascriptInterface public void adsPrivacy() { a.ads.showPrivacyOptions(); }
+        @JavascriptInterface public void openStore() {
+            a.runOnUiThread(() -> {
+                String pkg = a.getPackageName();
+                try { a.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+                catch (Exception e) {
+                    try { a.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + pkg))); } catch (Exception ignored) { }
+                }
+            });
+        }
 
         // ---- Play Games ----
         @JavascriptInterface public boolean pgsAvailable() { return a.pgs.isConfigured(); }

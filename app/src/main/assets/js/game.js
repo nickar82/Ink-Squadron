@@ -124,6 +124,7 @@ SCENES.game = {
     if (M.clock && human && (M.phase === 'roll' || M.phase === 'aim') && !M.paused && !M.result) {
       M.clock.left -= dt; if (M.clock.left <= 0) { M.clock.left = M.clock.limit; clockExpired(); }
     }
+    if (!M.paused && !M.result) drawMascotPop(vs ? H - 302 : H - 216);
     if (vs) { for (const sd of M.sides) { ctx.save(); if (sd.idx === 1) { ctx.translate(W, H); ctx.rotate(Math.PI); } drawPlayerHud(sd); ctx.restore(); } }
     else { drawTopBar(); drawTray(M.sides[0], false); }
     if (M.banner) {
@@ -144,6 +145,7 @@ SCENES.game = {
     if (M.netLost) drawNetLost();
     else if (M.paused) drawPause();
     if (M.result) drawResult(dt);
+    if (M.rate) drawRate(dt);
   },
   down(p) {
     if (!M || !humanTurn()) return;
@@ -283,9 +285,12 @@ function drawResult(dt) {
   ctx.save(); ctx.translate(W / 2, H / 2); if (vs && r.winner === 1 && !M.net) ctx.rotate(Math.PI); const s = easeBack(k); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2);
   const y = H / 2 - 290;
   sketchBox(80, y, 560, 580, { r: 36 });
+  if (!r.mood) { r.mood = (vs || win) ? 'satisfied' : 'sad'; r.mText = vs ? mLine('m_win', M.sides[r.winner].name) : mLine(win ? 'm_win' : 'm_lose'); }
+  drawMascotCorner(r.mood, r.mText, y, r.t);
   const title = M.net ? (win ? t('you_win') : t('you_lose')) : vs ? t('wins_n', M.sides[r.winner].name) : win ? t('victory') : t('shot_down');
   const col = (vs && !M.net) ? (r.winner === 0 ? RED : '#2366c9') : win ? RED : NAVY;
-  txt(title, W / 2, y + 80, vs ? 52 : 66, { color: col, stroke: '#fff', sw: 10, rot: -.04, max: 500 });
+  const mo = mascotOn() ? 70 : 0;
+  txt(title, W / 2 - mo, y + 80, vs ? 52 : 66, { color: col, stroke: '#fff', sw: 10, rot: -.04, max: 500 - mo * 2 });
   inkLine(W / 2 - 200, y + 125, W / 2 + 200, y + 118, col, 6, 5);
   if (!vs) {
     for (let i = 0; i < 3; i++) {

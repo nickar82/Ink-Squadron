@@ -4,7 +4,7 @@
    ========================================================= */
 let scene = null, sceneT = 0, fade = 0;
 function go(name) { scene = SCENES[name]; sceneT = 0; fade = 1; hits = []; pressed = null; }
-function overlayBlocks() { return (scene === SCENES.game || scene === SCENES.arena) && M && (M.paused || M.result || M.netLost || M.phase === 'continue'); }
+function overlayBlocks() { return (scene === SCENES.game || scene === SCENES.arena) && M && (M.paused || M.result || M.netLost || M.phase === 'continue' || (M.rate && M.rate.t >= 0)); }
 const SCENES = {};
 /* ---- player names ---- */
 function pName(i) { const n = (save.names || {})['p' + i]; return n && n.trim() ? n.trim().toUpperCase() : t(i === 1 ? 'player1' : 'player2'); }
@@ -194,17 +194,17 @@ SCENES.levels = {
 
 /* ---- SETTINGS ---- */
 function toggleRow(id, y, label, on, onTap) {
-  ui(id, 70, y, 580, 80, {}, (x, yy, w, h) => {
-    sketchBox(x, yy, w, h, { r: 24, seed: y | 0 }); txt(label, x + 30, yy + h / 2 + 2, 28, { align: 'left', max: w - 200 });
+  ui(id, 70, y, 580, 70, {}, (x, yy, w, h) => {
+    sketchBox(x, yy, w, h, { r: 22, seed: y | 0 }); txt(label, x + 30, yy + h / 2 + 2, 26, { align: 'left', max: w - 200 });
     const tx = x + w - 140;
-    sketchBox(tx, yy + 16, 110, 48, { r: 24, fill: on ? '#7ad39a' : '#e5e9f2', shadow: false, lw: 3 });
-    ctx.save(); ctx.beginPath(); ctx.arc(on ? tx + 86 : tx + 24, yy + 40, 19, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = NAVY; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
-    txt(on ? t('on') : t('off'), on ? tx + 38 : tx + 72, yy + 41, 16, { max: 44 });
+    sketchBox(tx, yy + 11, 110, 48, { r: 24, fill: on ? '#7ad39a' : '#e5e9f2', shadow: false, lw: 3 });
+    ctx.save(); ctx.beginPath(); ctx.arc(on ? tx + 86 : tx + 24, yy + 35, 19, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = NAVY; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+    txt(on ? t('on') : t('off'), on ? tx + 38 : tx + 72, yy + 36, 16, { max: 44 });
   }, onTap);
 }
 function valueRow(id, y, label, value, onTap, drawExtra) {
-  ui(id, 70, y, 580, 80, {}, (x, yy, w, h) => {
-    sketchBox(x, yy, w, h, { r: 24, seed: y | 0 }); txt(label, x + 30, yy + h / 2 + 2, 28, { align: 'left', max: 260 });
+  ui(id, 70, y, 580, 70, {}, (x, yy, w, h) => {
+    sketchBox(x, yy, w, h, { r: 22, seed: y | 0 }); txt(label, x + 30, yy + h / 2 + 2, 26, { align: 'left', max: 260 });
     if (drawExtra) drawExtra(x, yy, w, h);
     txt(value, x + w - 30, yy + h / 2 + 2, 24, { align: 'right', color: '#2366c9', max: 240 });
   }, onTap);
@@ -213,14 +213,15 @@ SCENES.settings = {
   confirm: 0,
   draw(gt) {
     drawGrid(40, 0, 0); header(t('settings'), () => go('menu'));
-    let y = 160; const st = 86;
+    let y = 156; const st = 78;
     const L = LANGS.find(l => l.code === (save.lang || 'en'));
     valueRow('sname', y, t('your_name'), pName(1), () => askName(t('your_name'), (save.names || {}).p1 || '', v => setName(1, v))); y += st;
-    valueRow('slang', y, t('language'), L.name, () => { SCENES.lang.from = 'settings'; go('lang'); }, (x, yy, w, h) => drawFlag(L.code, x + w - 290, yy + 22, 54, 36)); y += st;
+    valueRow('slang', y, t('language'), L.name, () => { SCENES.lang.from = 'settings'; go('lang'); }, (x, yy, w, h) => drawFlag(L.code, x + w - 290, yy + 17, 54, 36)); y += st;
     toggleRow('ssound', y, t('sound'), save.settings.sound, () => { save.settings.sound = !save.settings.sound; persist(); }); y += st;
     toggleRow('smusic', y, t('music'), save.settings.music !== false, () => { save.settings.music = save.settings.music === false; persist(); }); y += st;
     toggleRow('svib', y, t('vibration'), save.settings.vib, () => { save.settings.vib = !save.settings.vib; persist(); vib(60); }); y += st;
     toggleRow('sshake', y, t('shake'), save.settings.shake, () => { save.settings.shake = !save.settings.shake; persist(); }); y += st;
+    toggleRow('smascot', y, t('mascot'), save.settings.mascot !== false, () => { save.settings.mascot = save.settings.mascot === false; persist(); }); y += st;
     const th = save.settings.theme || 'auto';
     valueRow('stheme', y, t('theme'), t('theme_' + th) + (th === 'auto' && SEASON.id !== 'none' ? ' (' + t('season_' + SEASON.id) + ')' : ''), () => { const i = THEME_OPTS.indexOf(th); save.settings.theme = THEME_OPTS[(i + 1) % THEME_OPTS.length]; persist(); applySeason(); }); y += st;
     if (PGS.available()) { valueRow('spgs', y, 'Google Play Games', t('sign_in'), () => PGS.signIn()); y += st; }

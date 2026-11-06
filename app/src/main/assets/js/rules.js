@@ -123,7 +123,8 @@ function newMatch(cfg) {
   if (cfg.bunkers) placeBunkers(cfg.bunkers, r);
   scene = SCENES.game; computeBL();
   if (typeof onMatchStart === 'function') onMatchStart();
-  if (supply) { M.supply = supply; addFloat(W / 2, H * .45, t('supply', supply), RED, 40); }
+  if (supply) { M.supply = supply; addFloat(W / 2, H * .45, t('supply', supply), RED, 40); setTimeout(() => mascotSay('thumbs', 'm_supply', { force: true, pri: 3 }), 2600); }
+  Mascot.turnN = 0; Mascot.cur = null;
   startTurn();
 }
 function placeBunkers(n, r) {
@@ -219,6 +220,11 @@ async function startTurn() {
   await wait(side.isAI ? 1250 : 1350); if (tok !== M.token) return;
   if (M.mode === 'campaign' && M.turn === 1) { await enemyEvents(); if (tok !== M.token || checkEnd()) return; }
   M.phase = 'roll'; setHint();
+  if (isHuman(side)) {
+    Mascot.turnN++; const nm = M.mode === 'versus' && !M.net ? side.name : null;
+    if (Mascot.turnN === 1 && M.sides[1].ships.some(s => s.type === 'boss')) mascotSay('surprised', 'm_boss', { side: side.idx, force: true, pri: 2 });
+    else if (Mascot.turnN === 1 || Mascot.turnN % 3 === 0) mascotSay('attack', 'm_turn', { side: side.idx, name: nm });
+  }
   if (side.isAI) await aiTurn(side);
 }
 async function endTurn() {
@@ -244,9 +250,10 @@ async function finish(winner) {
       save.unlocked = Math.max(save.unlocked, Math.min(MAXLV, n + 1)); persist(); sfx.win(); confetti();
       gameEvent('win', { stars: res.stars, level: n, boss: M.sides[1].ships.some(s => s.type === 'boss') });
       if (save.fails) { delete save.fails[n]; persist(); }
-    } else { res.score = M.score; sfx.lose(); save.fails = save.fails || {}; save.fails[M.level] = (save.fails[M.level] || 0) + 1; persist(); }
+      save.stats.wins = (save.stats.wins || 0) + 1;
+    } else { res.score = M.score; sfx.lose(); Rate.maybe(); save.fails = save.fails || {}; save.fails[M.level] = (save.fails[M.level] || 0) + 1; persist(); }
   } else {
-    sfx.win(); confetti();
+    sfx.win(); confetti(); save.stats.wins = (save.stats.wins || 0) + 1;
     gameEvent(M.net ? 'netend' : 'vsend', { winner });
   }
   M.result = res;
@@ -323,6 +330,7 @@ async function hitShip(T, att, c, rocket) {
     T.hp--;
     if (T.hp > 0) {
       sfx.dent(); explosion(hx, hy, BL.cell * .9, false, att.color); shake(6); vib(60); addFloat(hx, hy, t('fx_dent'), '#ff7a1f', 36, rnd(-.2, .2));
+      if (isHuman(tside)) mascotSay('afraid', 'm_hit', { side: tside.idx, pri: 2 });
       await wait(1000 / TS); return;
     }
   }
@@ -334,6 +342,8 @@ async function hitShip(T, att, c, rocket) {
   att.hits++; tside.lost++;
   if (M.mode === 'campaign' && att.idx === 0) M.score += 250;
   if (isHuman(att)) gameEvent('kill', { type: T.type, rocket });
+  if (isHuman(tside)) mascotSay('afraid', 'm_lost', { side: tside.idx, pri: 2, force: true });
+  else if (isHuman(att)) mascotSay(T.type === 'boss' ? 'satisfied' : 'happy', T.type === 'boss' ? 'm_bosskill' : 'm_kill', { side: att.idx, pri: 2 });
   await wait(1350 / TS);
 }
 function canMove(ship, d) {
@@ -387,7 +397,7 @@ async function enemyEvents() {
     if (spots.length) {
       const x = spots[Math.random() * spots.length | 0], s = mkShip(1, x, 0, 'fighter', 1, M.G);
       s.oy = -6; e.ships.push(s); e.ships.sort((a, b) => a.x - b.x); M.reinfLeft--; M.reinfNext = M.round + cfg.reinf.every;
-      M.banner = { text: t('reinforcements'), t: 0, side: 1, color: e.color }; sfx.rocket();
+      M.banner = { text: t('reinforcements'), t: 0, side: 1, color: e.color }; sfx.rocket(); mascotSay('surprised', 'm_reinf', { force: true, pri: 3 });
       await tween(700 / TS, k => s.oy = -6 * (1 - easeOut(k))); s.oy = 0; if (tok !== M.token) return;
       await resolveStatic(s); await wait(800 / TS);
     } else M.reinfNext = M.round + 2;
@@ -396,7 +406,7 @@ async function enemyEvents() {
     M.raids = (M.raids || 0) + 1;
     const fromLeft = Math.random() < .5, pf = Math.min(...alive(M.sides[0]).map(s => s.gunRow));
     M.raider = { c: fromLeft ? -1 : M.C, dir: fromLeft ? 1 : -1, row: pf - 2.5, step: cfg.raid.step, vis: fromLeft ? -1 : M.C };
-    M.banner = { text: t('raid'), t: 0, side: 1, color: RED }; sfx.zap();
+    M.banner = { text: t('raid'), t: 0, side: 1, color: RED }; sfx.zap(); mascotSay('surprised', 'm_raid', { force: true, pri: 3 });
     await wait(700 / TS); await tween(500 / TS, k => M.raider.vis = M.raider.c + M.raider.dir * k * .9); M.raider.c += M.raider.dir; M.raider.vis = M.raider.c;
     if (tok !== M.token) return; checkRaiderShot();
   }
@@ -418,7 +428,7 @@ function checkRaiderShot(from) {
     if (hit) {
       const x = colX(c), y = rowY(R.row); explosion(x, y, BL.cell * 1.6, true, RED); sfx.boom(false); shake(10); vib(90);
       addFloat(x, y, t('fx_raider'), RED, 40); M.raider = null; M.raidNext = M.round + M.cfg.raid.every;
-      if (M.mode === 'campaign') M.score += 200; gameEvent('raider'); return true;
+      if (M.mode === 'campaign') M.score += 200; gameEvent('raider'); mascotSay('happy', 'm_raider', { force: true, pri: 3 }); return true;
     }
   }
   return false;

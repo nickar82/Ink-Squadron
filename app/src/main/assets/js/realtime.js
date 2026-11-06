@@ -21,7 +21,7 @@ function startRT(kind) {
     topRow: -2.6, bottomRow: G + 2 + 2.6, wave: 0, score: 0, credits: vs ? 0 : 3, timeLeft: kind === 'timeattack' ? save.ta.dur : 0, dur: save.ta.dur,
     phase: 'play', holds: {}, drags: {}, ai: { think: 1 }, bonus: null, cont: null, banner: null, flash: 0, calm: 0, cuts: 0
   };
-  M.scenery = sceneryNow();
+  M.scenery = sceneryNow(); Mascot.cur = null; Mascot.turnN = 0;
   scene = SCENES.arena; computeBL();
   if (!vs) nextWave(); else { M.phase = 'countdown'; M.cd = 3.2; }
   if (typeof onMatchStart === 'function') onMatchStart();
@@ -49,6 +49,7 @@ function nextWave() {
   if (!ex) ex = [8];
   const e = M.sides[1]; e.ships = ex.map((x, i) => { const s = mkShip(1, x, 0, types[i] || 'fighter', 1, M.G); s.oy = -7; for (const g of s.guns) g.ink = 2; return s; });
   M.phase = 'wavein'; M.waveT = 0; M.banner = { text: t('wave_n', M.wave), t: 0, side: 1, color: e.color }; sfx.turn();
+  if (M.wave === 1 || M.wave % 2 === 0) setTimeout(() => mascotSay('attack', 'm_wave', { gap: 2000 }), 1300);
   M.ai.skill = Math.min(1, .2 + M.wave * .07);
 }
 function startWarp() {
@@ -65,7 +66,7 @@ function startNuke() {
 }
 function startBonus() {
   M.phase = 'bonus'; M.bonus = { t: 15, spawn: 0, targets: [], pops: 0 }; M.sides[1].ships = [];
-  M.banner = { text: t('bonus_stage'), t: 0, side: 0, color: RED }; sfx.win();
+  M.banner = { text: t('bonus_stage'), t: 0, side: 0, color: RED }; sfx.win(); setTimeout(() => mascotSay('thumbs', 'm_bonus', { force: true, pri: 3 }), 1200);
   for (const s of M.sides[0].ships) for (const g of s.guns) { if (g.m > 0) eraseGun(s, g); g.ink = RT.INK; }
 }
 function endBonus() {
@@ -95,7 +96,7 @@ function rtExtend(side, ship, g, d) {
 function rtHit(T, att, c) {
   const tside = sideOf(T), hx = colX(c), hy = rowY(frontRow(T, c)); T.flash = 1; T.hp--;
   if (att.idx === 0 && M.rt !== 'rtvs') M.score += 100;
-  if (T.hp > 0) { sfx.dent(); explosion(hx, hy, BL.cell * .9, false, att.color); shake(5); vib(50); addFloat(hx, hy, t('fx_dent'), '#ff7a1f', 32, rnd(-.2, .2)); return; }
+  if (T.hp > 0) { sfx.dent(); explosion(hx, hy, BL.cell * .9, false, att.color); shake(5); vib(50); addFloat(hx, hy, t('fx_dent'), '#ff7a1f', 32, rnd(-.2, .2)); if (!tside.isAI) mascotSay('afraid', 'm_hit', { side: tside.idx, gap: 5000 }); return; }
   T.alive = false; T.deadT = 0; T.killColor = att.color;
   for (const g of T.guns) if (g.m > 0) eraseGun(T, g);
   const cc = shipCenter(T); explosion(cc.x, cc.y, BL.cell * (T.w === 5 ? 3.2 : 2.2), true, att.color); sfx.boom(true); shake(14); vib(120);
@@ -105,6 +106,8 @@ function rtHit(T, att, c) {
   att.hits++; tside.lost++;
   if (att.idx === 0 && M.rt !== 'rtvs') M.score += 250;
   if (!att.isAI) gameEvent('kill', { type: T.type, rt: true });
+  if (!tside.isAI) mascotSay('afraid', 'm_lost', { side: tside.idx, pri: 2, gap: 2500 });
+  else mascotSay('happy', 'm_kill', { side: att.idx, gap: 6000 });
 }
 function rtMove(ship, d) {
   if (!canMove(ship, d)) return;
@@ -212,6 +215,8 @@ function rtGameOver(timeUp) {
   const stars = M.rt === 'timeattack' ? (M.wave - 1 >= 10 ? 3 : M.wave - 1 >= 6 ? 2 : M.wave - 1 >= 3 ? 1 : 0) : 0;
   save.hi[key] = Math.max(prev, M.score); persist();
   M.result = { t: 0, score: M.score, best: save.hi[key], newBest: M.score > prev, wave: M.wave, stars, timeUp };
+  if (M.result.newBest && M.score > 0) save.stats.wins = (save.stats.wins || 0) + 1;
+  Mascot.cur = null; Rate.maybe();
   gameEvent('rtover', { mode: M.rt, score: M.score, wave: M.wave, dur: M.dur });
   sfx[M.score > prev ? 'win' : 'lose']();
 }
@@ -287,6 +292,7 @@ SCENES.arena = {
         txt(b.text, 0, 3, 50, { color: b.color === RED ? RED : '#2366c9', stroke: '#fff', sw: 8, max: 440 }); ctx.restore();
       }
     }
+    if (!['warp', 'nuke', 'continue', 'over'].includes(M.phase) && !M.paused) drawMascotPop(vs ? H - 132 : H - 88);
     if (M.phase === 'warp' || M.phase === 'nuke') drawBreak(dt);
     if (M.phase === 'countdown') {
       const n = Math.ceil(M.cd), rots = M.rt === 'rtvs' ? [0, Math.PI] : [0];
@@ -296,6 +302,7 @@ SCENES.arena = {
     if (M.phase === 'continue') drawContinue();
     if (M.paused && !M.result) drawRTPause();
     if (M.result) drawRTResult(dt);
+    if (M.rate) drawRate(dt);
   },
   pdown(id, p) {
     if (!M || M.paused || M.result || ['continue', 'over', 'countdown', 'warp', 'nuke'].includes(M.phase)) return;
@@ -321,7 +328,8 @@ SCENES.arena = {
 function coin(x, y, r) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = YEL; ctx.fill(); ctx.strokeStyle = NAVY; ctx.lineWidth = 2.5; ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, r * .55, 0, 7); ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore(); }
 function drawContinue() {
   const c = M.cont, y = H / 2 - 270; overlayCard(y, 540);
-  txt(t('continue_q'), W / 2, y + 80, 64, { color: RED, stroke: '#fff', sw: 10, max: 460 });
+  c.mt = c.mt || mLine('m_cont'); c.tt = (c.tt || 0) + 1 / 60; drawMascotCorner('sad', c.mt, y, c.tt + .4);
+  txt(t('continue_q'), W / 2 - (mascotOn() ? 50 : 0), y + 80, 64, { color: RED, stroke: '#fff', sw: 10, max: mascotOn() ? 380 : 460 });
   const n = Math.max(0, Math.ceil(c.t)), k = c.t - Math.floor(c.t);
   txt(String(n), W / 2, y + 220, 150 * (0.85 + k * .25), { color: NAVY, stroke: '#fff', sw: 12 });
   for (let i = 0; i < Math.min(M.credits, 8); i++) coin(W / 2 + (i - (Math.min(M.credits, 8) - 1) / 2) * 34, y + 330, 15);
@@ -342,11 +350,13 @@ function drawRTResult(dt) {
   ctx.save(); ctx.fillStyle = `rgba(243,246,252,${.8 * k})`; ctx.fillRect(0, 0, W, H); ctx.restore();
   ctx.save(); ctx.translate(W / 2, H / 2); if (vs && r.winner === 1) ctx.rotate(Math.PI); ctx.scale(easeBack(k), easeBack(k)); ctx.translate(-W / 2, -H / 2);
   const y = H / 2 - 290; sketchBox(80, y, 560, 580, { r: 36 });
+  if (!r.mood) { r.mood = vs ? 'satisfied' : r.newBest && r.score > 0 ? 'satisfied' : 'sad'; r.mText = vs ? mLine('m_win', M.sides[r.winner].name) : mLine(r.mood === 'satisfied' ? 'm_best' : 'm_lose'); }
+  drawMascotCorner(r.mood, r.mText, y, r.t);
   if (vs) {
-    txt(t('wins_n', M.sides[r.winner].name), W / 2, y + 80, 52, { color: r.winner === 0 ? RED : '#2366c9', stroke: '#fff', sw: 10, max: 500 });
+    txt(t('wins_n', M.sides[r.winner].name), W / 2 - (mascotOn() ? 70 : 0), y + 80, 52, { color: r.winner === 0 ? RED : '#2366c9', stroke: '#fff', sw: 10, max: mascotOn() ? 360 : 500 });
     drawShip(W / 2, y + 220, 44, -1, { color: M.sides[r.winner].color, t: r.t, exhaust: true });
   } else {
-    txt(r.timeUp ? t('time_up') : t('game_over'), W / 2, y + 80, 62, { color: RED, stroke: '#fff', sw: 10, max: 500 });
+    txt(r.timeUp ? t('time_up') : t('game_over'), W / 2 - (mascotOn() ? 70 : 0), y + 80, 62, { color: RED, stroke: '#fff', sw: 10, max: mascotOn() ? 360 : 500 });
     if (M.rt === 'timeattack') for (let i = 0; i < 3; i++) star(W / 2 + (i - 1) * 100, y + 175, 38, i < r.stars, { lw: 4 });
     txt(t('score') + ' ' + Math.round(r.score * clamp(r.t / 1.2, 0, 1)), W / 2, y + 250, 44, { color: '#2366c9', max: 500 });
     txt((r.newBest ? '★ ' + t('new_best') + ' ★' : t('best') + ' ' + r.best), W / 2, y + 305, 28, { color: r.newBest ? RED : '#5a6c9a', max: 500 });
