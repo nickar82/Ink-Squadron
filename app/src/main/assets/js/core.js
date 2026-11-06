@@ -14,7 +14,7 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 
 /* ---------------- save data ---------------- */
 const SAVE_KEY = 'inkSquadron.v1', MAXLV = 100;
-let save = { unlocked: 1, best: {}, stars: {}, lang: null, ach: {}, stats: {}, hi: {}, settings: { sound: true, vib: true, shake: true, theme: 'auto' }, vs: { ships: 3, len: 1, pw: true, rt: false, clock: 0 }, ta: { dur: 120 } };
+let save = { unlocked: 1, best: {}, stars: {}, lang: null, ach: {}, stats: {}, hi: {}, settings: { sound: true, music: true, vib: true, shake: true, theme: 'auto' }, vs: { ships: 3, len: 1, pw: true, rt: false, clock: 0 }, ta: { dur: 120 } };
 try {
   const s = JSON.parse(localStorage.getItem(SAVE_KEY));
   if (s) save = Object.assign({}, save, s, { settings: Object.assign({}, save.settings, s.settings || {}), vs: Object.assign({}, save.vs, s.vs || {}), ta: Object.assign({}, save.ta, s.ta || {}), ach: s.ach || {}, stats: s.stats || {}, hi: s.hi || {} });

@@ -181,6 +181,7 @@ SCENES.settings = {
     const L = LANGS.find(l => l.code === (save.lang || 'en'));
     valueRow('slang', y, t('language'), L.name, () => { SCENES.lang.from = 'settings'; go('lang'); }, (x, yy, w, h) => drawFlag(L.code, x + w - 290, yy + 22, 54, 36)); y += st;
     toggleRow('ssound', y, t('sound'), save.settings.sound, () => { save.settings.sound = !save.settings.sound; persist(); }); y += st;
+    toggleRow('smusic', y, t('music'), save.settings.music !== false, () => { save.settings.music = save.settings.music === false; persist(); }); y += st;
     toggleRow('svib', y, t('vibration'), save.settings.vib, () => { save.settings.vib = !save.settings.vib; persist(); vib(60); }); y += st;
     toggleRow('sshake', y, t('shake'), save.settings.shake, () => { save.settings.shake = !save.settings.shake; persist(); }); y += st;
     const th = save.settings.theme || 'auto';

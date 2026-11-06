@@ -12,7 +12,7 @@ function frame(now) {
     for (const tm of timers.slice()) { tm.t += sdt; if (tm.fn) tm.fn(Math.min(1, tm.t / tm.d)); if (tm.t >= tm.d) { const i = timers.indexOf(tm); if (i >= 0) timers.splice(i, 1); tm.done(); } }
     updateFx(dt);
   }
-  seasonUpdate(dt);
+  seasonUpdate(dt); musicUpdate();
   sceneT += dt;
   hits = [];
   drawPaper();

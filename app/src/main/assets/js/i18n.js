@@ -7,6 +7,7 @@ const LANGS = [
 ];
 const STR = {};
 STR.en = {
+  music: 'MUSIC',
   sudden_death: 'SUDDEN DEATH!',
   supply: 'SUPPLY DROP! +{0} SHIELD',
   you: 'YOU', enemy: 'ENEMY', opponent: 'OPPONENT', player1: 'PLAYER 1', player2: 'PLAYER 2',
@@ -61,6 +62,7 @@ STR.en = {
   ach_variety: 'Spotter', achd_variety: 'Destroy every enemy ship type', ach_season: 'Festive Pilot', achd_season: 'Play during a seasonal event'
 };
 STR.zh = {
+  music: '音乐',
   sudden_death: '决胜时刻！',
   supply: '补给空投！护盾 +{0}',
   you: '你', enemy: '敌人', opponent: '对手', player1: '玩家 1', player2: '玩家 2', your_turn: '你的回合', enemy_turn: '敌方回合', their_turn: '对手回合',
@@ -109,6 +111,7 @@ STR.zh = {
   ach_nearby_win: '无线王牌', achd_nearby_win: '赢得一场 Wi-Fi/蓝牙对战', ach_variety: '侦察员', achd_variety: '摧毁所有敌机类型', ach_season: '节日飞行员', achd_season: '在节日活动期间游戏'
 };
 STR.es = {
+  music: 'MÚSICA',
   sudden_death: '¡MUERTE SÚBITA!',
   supply: '¡SUMINISTROS! +{0} ESCUDO',
   you: 'TÚ', enemy: 'ENEMIGO', opponent: 'RIVAL', player1: 'JUGADOR 1', player2: 'JUGADOR 2', your_turn: 'TU TURNO', enemy_turn: 'TURNO ENEMIGO', their_turn: 'SU TURNO',
@@ -157,6 +160,7 @@ STR.es = {
   ach_nearby_win: 'As inalámbrico', achd_nearby_win: 'Gana una batalla por Wi-Fi/Bluetooth', ach_variety: 'Observador', achd_variety: 'Destruye todos los tipos de nave', ach_season: 'Piloto festivo', achd_season: 'Juega durante un evento de temporada'
 };
 STR.ja = {
+  music: '音楽',
   sudden_death: 'サドンデス！',
   supply: '補給到着！シールド +{0}',
   you: 'あなた', enemy: 'てき', opponent: 'あいて', player1: 'プレイヤー1', player2: 'プレイヤー2', your_turn: 'あなたのターン', enemy_turn: 'てきのターン', their_turn: 'あいてのターン',
@@ -205,6 +209,7 @@ STR.ja = {
   ach_nearby_win: 'ワイヤレスエース', achd_nearby_win: 'Wi-Fi/Bluetooth対戦で勝つ', ach_variety: '観測手', achd_variety: '全種類の敵機を撃墜', ach_season: 'お祭りパイロット', achd_season: '季節イベント中に遊ぶ'
 };
 STR.de = {
+  music: 'MUSIK',
   sudden_death: 'SUDDEN DEATH!',
   supply: 'NACHSCHUB! +{0} SCHILD',
   you: 'DU', enemy: 'FEIND', opponent: 'GEGNER', player1: 'SPIELER 1', player2: 'SPIELER 2', your_turn: 'DEIN ZUG', enemy_turn: 'FEINDZUG', their_turn: 'GEGNERZUG',
@@ -253,6 +258,7 @@ STR.de = {
   ach_nearby_win: 'Funk-Ass', achd_nearby_win: 'Gewinne über WLAN/Bluetooth', ach_variety: 'Späher', achd_variety: 'Zerstöre jeden Flugzeugtyp', ach_season: 'Festtagspilot', achd_season: 'Spiele während eines Saison-Events'
 };
 STR.fr = {
+  music: 'MUSIQUE',
   sudden_death: 'MORT SUBITE !',
   supply: 'RAVITAILLEMENT ! +{0} BOUCLIER',
   you: 'TOI', enemy: 'ENNEMI', opponent: 'ADVERSAIRE', player1: 'JOUEUR 1', player2: 'JOUEUR 2', your_turn: 'À TOI', enemy_turn: 'TOUR ENNEMI', their_turn: 'À LUI',
@@ -301,6 +307,7 @@ STR.fr = {
   ach_nearby_win: 'As du sans-fil', achd_nearby_win: 'Gagne en Wi-Fi/Bluetooth', ach_variety: 'Observateur', achd_variety: 'Détruis tous les types d\'avions', ach_season: 'Pilote festif', achd_season: 'Joue pendant un événement saisonnier'
 };
 STR.it = {
+  music: 'MUSICA',
   sudden_death: 'MORTE IMPROVVISA!',
   supply: 'RIFORNIMENTI! +{0} SCUDO',
   you: 'TU', enemy: 'NEMICO', opponent: 'AVVERSARIO', player1: 'GIOCATORE 1', player2: 'GIOCATORE 2', your_turn: 'TOCCA A TE', enemy_turn: 'TURNO NEMICO', their_turn: 'TOCCA A LUI',
@@ -349,6 +356,7 @@ STR.it = {
   ach_nearby_win: 'Asso wireless', achd_nearby_win: 'Vinci via Wi-Fi/Bluetooth', ach_variety: 'Osservatore', achd_variety: 'Distruggi ogni tipo di aereo', ach_season: 'Pilota in festa', achd_season: 'Gioca durante un evento stagionale'
 };
 STR.el = {
+  music: 'ΜΟΥΣΙΚΗ',
   sudden_death: 'ΑΙΦΝΙΔΙΟΣ ΘΑΝΑΤΟΣ!',
   supply: 'ΑΝΕΦΟΔΙΑΣΜΟΣ! +{0} ΑΣΠΙΔΑ',
   you: 'ΕΣΥ', enemy: 'ΕΧΘΡΟΣ', opponent: 'ΑΝΤΙΠΑΛΟΣ', player1: 'ΠΑΙΚΤΗΣ 1', player2: 'ΠΑΙΚΤΗΣ 2', your_turn: 'ΣΕΙΡΑ ΣΟΥ', enemy_turn: 'ΣΕΙΡΑ ΕΧΘΡΟΥ', their_turn: 'ΣΕΙΡΑ ΤΟΥ',

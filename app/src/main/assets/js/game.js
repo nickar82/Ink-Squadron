@@ -260,7 +260,8 @@ function drawPause() {
   txt(t('paused'), W / 2, y + 70, 60, { stroke: '#fff', sw: 8, max: 460 });
   bigButton('resume', 170, y + 130, 380, 86, t('resume'), { fill: YEL, icon: iconPlay, fs: 36 }, () => { M.paused = false; });
   if (!M.net) bigButton('restart', 170, y + 236, 380, 80, t('restart'), { fs: 32 }, () => { const c = M.mode === 'campaign' ? levelCfg(M.level) : versusCfg(); M.token = null; newMatch(c); });
-  bigButton('snd', 170, y + 336, 380, 70, t('sound') + ': ' + (save.settings.sound ? t('on') : t('off')), { fs: 28 }, () => { save.settings.sound = !save.settings.sound; persist(); });
+  bigButton('snd', 170, y + 336, 184, 70, t('sound') + (save.settings.sound ? ' ✓' : ' ✗'), { fs: 22 }, () => { save.settings.sound = !save.settings.sound; persist(); });
+  bigButton('mus', 366, y + 336, 184, 70, t('music') + (save.settings.music !== false ? ' ✓' : ' ✗'), { fs: 22 }, () => { save.settings.music = save.settings.music === false; persist(); });
   bigButton('quit', 170, y + 422, 380, 70, t('quit'), { fs: 28 }, () => { if (M.net) netSend({ t: 'bye' }); quitMatch(); });
 }
 function drawNetLost() {
