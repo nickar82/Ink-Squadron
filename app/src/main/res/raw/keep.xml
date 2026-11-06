@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ids are looked up by name at runtime, so keep them when shrinking resources -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/ach_*,@string/lb_*,@string/game_services_project_id,@string/admob_*" />
