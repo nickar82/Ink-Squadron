@@ -19,10 +19,16 @@ function frame(now) {
   try { scene.draw(gt, paused ? 0 : dt * (scene === SCENES.arena ? TS : 1)); if (!inMatch) drawFx(); } catch (e) { console.error(e); }
   seasonDraw();
   drawToasts(dt);
+  if (window.innerWidth > window.innerHeight * 1.05) {
+    ctx.save(); ctx.fillStyle = 'rgba(243,246,252,.96)'; ctx.fillRect(-OX / SC, 0, W + 2 * OX / SC, H);
+    ctx.translate(W / 2, H * .42); ctx.rotate(Math.sin(gt * 2) * .3 - .3); rrPath(ctx, -50, -85, 100, 170, 16); ctx.strokeStyle = NAVY; ctx.lineWidth = 6; ctx.stroke(); ctx.restore();
+    txt(t('rotate'), W / 2, H * .62, 36, { color: NAVY, max: 640 });
+  }
   if (fade > 0) { ctx.save(); ctx.globalAlpha = fade; ctx.fillStyle = PAPER; ctx.fillRect(0, 0, W, H); ctx.restore(); fade = Math.max(0, fade - dt * 4); }
   requestAnimationFrame(frame);
 }
 applySeason(); resize();
+try { screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(() => { }); } catch (e) { }
 if (!save.lang) { SCENES.lang.from = null; go('lang'); } else go('menu');
 fade = 0;
 requestAnimationFrame(frame);

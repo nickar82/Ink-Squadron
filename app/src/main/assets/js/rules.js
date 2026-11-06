@@ -105,8 +105,8 @@ function newMatch(cfg) {
     if (f >= 2) { supply = Math.min(3, Math.floor(f / 2)); cfg = Object.assign({}, cfg, { pPw: Object.assign({}, cfg.pPw), skill: Math.max(.4, cfg.skill - .1 * supply) }); cfg.pPw.shield += supply; cfg.pPw.rocket += Math.min(2, supply); }
   }
   const sides = [
-    { idx: 0, dir: -1, color: RED, ships: [], pw: Object.assign({}, cfg.pPw), isAI: false, name: camp ? t('you') : cfg.net ? t('you') : t('player1'), lost: 0, hits: 0 },
-    { idx: 1, dir: 1, color: (typeof SEASON !== 'undefined' && SEASON.enemy) || BLUE, ships: [], pw: Object.assign({}, cfg.ePw), isAI: camp, isRemote: !!cfg.net, name: camp ? t('enemy') : cfg.net ? (cfg.oppName || t('opponent')) : t('player2'), lost: 0, hits: 0, ai: { skill: cfg.skill || 0, loaded: !!cfg.loaded } }
+    { idx: 0, dir: -1, color: RED, ships: [], pw: Object.assign({}, cfg.pPw), isAI: false, name: camp ? t('you') : pName(1), lost: 0, hits: 0 },
+    { idx: 1, dir: 1, color: (typeof SEASON !== 'undefined' && SEASON.enemy) || BLUE, ships: [], pw: Object.assign({}, cfg.ePw), isAI: camp, isRemote: !!cfg.net, name: camp ? t('enemy') : cfg.net ? (cfg.oppName || t('opponent')).toUpperCase() : pName(2), lost: 0, hits: 0, ai: { skill: cfg.skill || 0, loaded: !!cfg.loaded } }
   ];
   L.p.forEach((x, i) => sides[0].ships.push(mkShip(0, x, cfg.stP[i] || 0, cfg.pTypes[i] || 'fighter', -1, G)));
   L.e.forEach((x, i) => sides[1].ships.push(mkShip(1, x, cfg.stE[i] || 0, cfg.eTypes[i] || 'fighter', 1, G, cfg.bossLv)));
@@ -215,14 +215,14 @@ async function startTurn() {
   if (M.clock) M.clock.left = M.clock.limit;
   const label = M.mode === 'campaign' ? (side.isAI ? t('enemy_turn') : t('your_turn')) : M.net ? (side.isRemote ? t('their_turn') : t('your_turn')) : side.name;
   M.banner = { text: label, t: 0, side: side.idx, color: side.color }; sfx.turn();
-  await wait(side.isAI ? 750 : 850); if (tok !== M.token) return;
+  await wait(side.isAI ? 1250 : 1350); if (tok !== M.token) return;
   if (M.mode === 'campaign' && M.turn === 1) { await enemyEvents(); if (tok !== M.token || checkEnd()) return; }
   M.phase = 'roll'; setHint();
   if (side.isAI) await aiTurn(side);
 }
 async function endTurn() {
   const tok = M.token; if (M.over || checkEnd()) return;
-  M.phase = 'wait'; await wait(250); if (tok !== M.token) return;
+  M.phase = 'wait'; await wait(600); if (tok !== M.token) return;
   if (M.mode === 'campaign' && M.turn === 1 && M.raider) { await moveRaider(); if (tok !== M.token || checkEnd()) return; }
   M.turn = 1 - M.turn; startTurn();
 }
@@ -264,7 +264,7 @@ async function rollDice(side, n, forced) {
   for (let i = 0; i < n; i++) { let v = forced ? forced[i] : 1 + (Math.random() * 6 | 0); if (!forced && side.ai && side.ai.loaded && v === 1) v = 1 + (Math.random() * 6 | 0); vals.push(v); }
   const od = overdrive(); ui.bonus = od;
   ui.faces = vals.slice(); ui.vals = vals; ui.rot = ui.rot.map(() => rnd(-.12, .12)); ui.rolling = false; ui.land = 0; sfx.land();
-  await wait(280 / TS); return vals.map(v => v + od);
+  await wait(650 / TS); return vals.map(v => v + od);
 }
 
 async function fire(side, ship, g, amt, rocket) {
@@ -292,20 +292,20 @@ async function fire(side, ship, g, amt, rocket) {
     explosion(p.x, p.y1, BL.cell * .8, false, side.color); spawnBurst(p.x, p.y1, 8, { type: 'debris', colors: ['#fff'], max: 260, smin: 4, smax: 8, life: .8, g: 500 });
     sfx.dent(); shake(4); eraseGun(ship, g); if (isHuman(side)) gameEvent('bunker');
     M.splats.push({ x: b.c, r: b.r + .5, size: .9, seed: b.seed, color: side.color });
-    await wait(320 / TS);
+    await wait(800 / TS);
   } else if (o.type === 'hit') {
     eraseGun(ship, g); await hitShip(I.T, side, I.c, rocket);
   } else if (o.type === 'miss') {
-    addFloat(p.x, p.y1 + side.dir * -20, t('fx_miss'), '#8090b0', 32); sfx.miss(); eraseGun(ship, g); await wait(350 / TS);
-  } else if (rocket) { explosion(p.x, p.y1, BL.cell * .6, false, side.color); sfx.pop(); await wait(250 / TS); }
-  else if (o.cut) await wait(250 / TS);
+    addFloat(p.x, p.y1 + side.dir * -20, t('fx_miss'), '#8090b0', 32); sfx.miss(); eraseGun(ship, g); await wait(850 / TS);
+  } else if (rocket) { explosion(p.x, p.y1, BL.cell * .6, false, side.color); sfx.pop(); await wait(700 / TS); }
+  else if (o.cut) await wait(750 / TS);
 }
 function shipCenter(T) { const d = sideOf(T).dir; return { x: colX(T.x + T.ox), y: rowY(T.gunRow + T.oy) - d * BL.cell * .4 }; }
 async function hitShip(T, att, c, rocket) {
   const tside = sideOf(T), cc = shipCenter(T), hx = colX(c), hy = rowY(frontRow(T, c));
   if (T.shield) {
     T.shield = false; sfx.pop(); vib(40); spawnBurst(cc.x, cc.y, 22, { colors: [BLUE, '#9cc6ff', '#fff'], max: 300, g: 0 });
-    addFloat(hx, hy, t('fx_blocked'), BLUE, 36); await wait(450 / TS); return;
+    addFloat(hx, hy, t('fx_blocked'), BLUE, 36); await wait(950 / TS); return;
   }
   T.flash = 1; M.calm = 0;
   if (M.mode === 'campaign' && att.idx === 0) M.score += 100;
@@ -314,15 +314,15 @@ async function hitShip(T, att, c, rocket) {
     if (k !== 'core' && p.hp <= 0) {
       for (const g of T.guns) if ((k === 'lw' && g.off < 0) || (k === 'rw' && g.off > 0) || (k === 'nose' && g.off === 0)) { if (g.m > 0) eraseGun(T, g); g.dead = true; }
       explosion(hx, hy, BL.cell * 1.6, true, att.color); sfx.boom(false); shake(10); vib(90);
-      addFloat(hx, hy, t('fx_part_' + k), '#ff7a1f', 36, rnd(-.2, .2)); await wait(650 / TS); return;
+      addFloat(hx, hy, t('fx_part_' + k), '#ff7a1f', 36, rnd(-.2, .2)); await wait(1150 / TS); return;
     }
     T.hp = T.parts.core.hp;
-    if (k !== 'core' || p.hp > 0) { sfx.dent(); explosion(hx, hy, BL.cell * .9, false, att.color); shake(6); vib(60); addFloat(hx, hy, t('fx_dent'), '#ff7a1f', 34, rnd(-.2, .2)); await wait(450 / TS); return; }
+    if (k !== 'core' || p.hp > 0) { sfx.dent(); explosion(hx, hy, BL.cell * .9, false, att.color); shake(6); vib(60); addFloat(hx, hy, t('fx_dent'), '#ff7a1f', 34, rnd(-.2, .2)); await wait(950 / TS); return; }
   } else {
     T.hp--;
     if (T.hp > 0) {
       sfx.dent(); explosion(hx, hy, BL.cell * .9, false, att.color); shake(6); vib(60); addFloat(hx, hy, t('fx_dent'), '#ff7a1f', 36, rnd(-.2, .2));
-      await wait(500 / TS); return;
+      await wait(1000 / TS); return;
     }
   }
   T.alive = false; T.deadT = 0; T.shield = false; T.killColor = att.color;
@@ -333,7 +333,7 @@ async function hitShip(T, att, c, rocket) {
   att.hits++; tside.lost++;
   if (M.mode === 'campaign' && att.idx === 0) M.score += 250;
   if (isHuman(att)) gameEvent('kill', { type: T.type, rocket });
-  await wait(850 / TS);
+  await wait(1350 / TS);
 }
 function canMove(ship, d) {
   const nx = ship.x + d, hh = half(ship);
@@ -370,7 +370,7 @@ async function resolveStatic(ship) {
 async function useShield(side, ship) {
   side.pw.shield--; ship.shield = true; sfx.shield(); vib(20);
   const c = shipCenter(ship); spawnBurst(c.x, c.y, 16, { colors: [BLUE, '#9cc6ff'], max: 220, g: 0 });
-  await wait(350 / TS);
+  await wait(850 / TS);
 }
 
 /* ---- enemy events: reinforcements & bomber raid (Classic) ---- */
@@ -388,7 +388,7 @@ async function enemyEvents() {
       s.oy = -6; e.ships.push(s); e.ships.sort((a, b) => a.x - b.x); M.reinfLeft--; M.reinfNext = M.round + cfg.reinf.every;
       M.banner = { text: t('reinforcements'), t: 0, side: 1, color: e.color }; sfx.rocket();
       await tween(700 / TS, k => s.oy = -6 * (1 - easeOut(k))); s.oy = 0; if (tok !== M.token) return;
-      await resolveStatic(s); await wait(300 / TS);
+      await resolveStatic(s); await wait(800 / TS);
     } else M.reinfNext = M.round + 2;
   }
   if (cfg.raid && !M.raider && M.round >= M.raidNext && (M.raids || 0) < (M.level >= 50 ? 3 : 2)) {
@@ -396,7 +396,7 @@ async function enemyEvents() {
     const fromLeft = Math.random() < .5, pf = Math.min(...alive(M.sides[0]).map(s => s.gunRow));
     M.raider = { c: fromLeft ? -1 : M.C, dir: fromLeft ? 1 : -1, row: pf - 2.5, step: cfg.raid.step, vis: fromLeft ? -1 : M.C };
     M.banner = { text: t('raid'), t: 0, side: 1, color: RED }; sfx.zap();
-    await tween(500 / TS, k => M.raider.vis = M.raider.c + M.raider.dir * k * .9); M.raider.c += M.raider.dir; M.raider.vis = M.raider.c;
+    await wait(700 / TS); await tween(500 / TS, k => M.raider.vis = M.raider.c + M.raider.dir * k * .9); M.raider.c += M.raider.dir; M.raider.vis = M.raider.c;
     if (tok !== M.token) return; checkRaiderShot();
   }
 }
@@ -547,7 +547,7 @@ async function aiFreeMoves(side) {
 }
 async function aiTurn(side) {
   const tok = M.token, sk = side.ai ? side.ai.skill : .7; if (!side.ai) side.ai = { skill: .7, loaded: false };
-  await wait(380 / TS); if (tok !== M.token) return;
+  await wait(800 / TS); if (tok !== M.token) return;
   if (!(await aiFreeMoves(side))) return;
   // shield
   if (side.pw.shield > 0 && Math.random() < .3 + sk * .7) {
@@ -573,7 +573,7 @@ async function aiTurn(side) {
   const wantMove = best && (!hasT || (bs > 55 && Math.random() < sk * .55));
   if (wantMove) {
     if (side.isAI) M.hint = t('hint_enemy_move');
-    M.sel = best.s; await wait(300 / TS); M.sel = null; await moveShip(best.s, best.d); if (tok !== M.token || checkEnd()) return; endTurn(); return;
+    M.sel = best.s; await wait(750 / TS); M.sel = null; await moveShip(best.s, best.d); if (tok !== M.token || checkEnd()) return; endTurn(); return;
   }
   // rocket
   if (side.pw.rocket > 0 && Math.random() < .25 + sk * .6) {
@@ -588,7 +588,7 @@ async function aiTurn(side) {
   M.phase = 'rolling'; const vals = await rollDice(side, n); if (tok !== M.token) return;
   M.dice = vals.slice(); M.phase = 'aim';
   for (const v of vals) {
-    await wait(320 / TS); if (tok !== M.token) return;
+    await wait(750 / TS); if (tok !== M.token) return;
     const b = aiBest(side, v, false); M.dice.shift(); M.diceUI && M.diceUI.used++;
     if (b) { M.phase = 'firing'; await fire(side, b.sh, b.g, v + sniperBonus(b.sh), false); }
     if (tok !== M.token || checkEnd()) return;

@@ -152,7 +152,7 @@ function drawShip(x, y, cell, dir, o = {}) {
     }
   }
   if (o.dead) {
-    ctx.globalAlpha = 1; const R2 = cell * (T.w === 5 ? 3.6 : 2.5), cy = y + .3 * sy;
+    ctx.globalAlpha = 1; const R2 = cell * (T.w === 5 ? 4.8 : 3.4), cy = y + .3 * sy;
     if (typeof drawSprite === 'function' && SPRITES.ready) {
       const fr = Math.min(5, Math.floor((o.deadT || 9) / .06));
       drawSprite('scribble', fr, x, cy, R2, o.killColor || RED, .92, (o.seed % 7) * .25 - .7, o.seed % 2 === 0);

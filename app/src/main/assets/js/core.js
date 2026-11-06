@@ -314,7 +314,7 @@ const wait = ms => new Promise(r => timers.push({ t: 0, d: ms / 1000, done: r })
 const tween = (ms, fn) => new Promise(r => timers.push({ t: 0, d: ms / 1000, fn, done: r }));
 let parts = [], floats = [], shakeA = 0;
 function shake(a) { if (save.settings.shake) shakeA = Math.max(shakeA, a); }
-function addFloat(x, y, text, color, size = 40, rot = 0) { floats.push({ x, y, text, color, t: 0, life: 1.1, size, rot }); }
+function addFloat(x, y, text, color, size = 40, rot = 0) { floats.push({ x, y, text, color, t: 0, life: 1.6, size, rot }); }
 function spawnBurst(x, y, n, o = {}) {
   for (let i = 0; i < n; i++) {
     const a = rnd(0, Math.PI * 2), sp = rnd(o.min || 80, o.max || 380);
@@ -324,7 +324,7 @@ function spawnBurst(x, y, n, o = {}) {
 function explosion(x, y, r, big, color) {
   color = color || NAVY;
   if (typeof SPRITES !== 'undefined' && SPRITES.ready) {
-    parts.push({ x, y, type: 'splat', sheet: 'splat' + (1 + (Math.random() * 3 | 0)), color, t: 0, life: big ? 1.0 : .55, size: r * (big ? 2.2 : 1.9), rot: rnd(0, 6.28), flip: Math.random() < .5, vx: 0, vy: 0, g: 0, small: !big });
+    parts.push({ x, y, type: 'splat', sheet: 'splat' + (1 + (Math.random() * 3 | 0)), color, t: 0, life: big ? 1.0 : .55, size: r * (big ? 3.3 : 2.6), rot: rnd(0, 6.28), flip: Math.random() < .5, vx: 0, vy: 0, g: 0, small: !big });
   } else parts.push({ x, y, type: 'boom', t: 0, life: big ? .7 : .45, size: r, rot: rnd(0, 1), vx: 0, vy: 0, g: 0 });
   spawnBurst(x, y, big ? 18 : 8, { type: 'ink', colors: [color], min: 120, max: big ? 520 : 300, smin: 2, smax: big ? 6 : 4, g: 0, life: big ? .6 : .4 });
   if (big) spawnBurst(x, y, 10, { type: 'debris', colors: ['#fff'], max: 420, smin: 6, smax: 13, life: 1.2, g: 600 });

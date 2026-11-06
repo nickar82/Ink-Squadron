@@ -22,7 +22,7 @@ function achAdd(id, n = 1) {
   if (save.ach[id] >= a[2]) toast(t('ach_unlocked'), t('ach_' + id));
 }
 function achSet(id, v) { const cur = achProgress(id); if (v > cur) achAdd(id, v - cur); }
-function submitScore(board, score) { const b = Bridge(); try { if (b && b.pgsScore) b.pgsScore(LEADERBOARDS[board], Math.round(score)); } catch (e) { } }
+function submitScore(board, score) { if (!LEADERBOARDS[board]) return; const b = Bridge(); try { if (b && b.pgsScore) b.pgsScore(LEADERBOARDS[board], Math.round(score)); } catch (e) { } }
 let toasts = [];
 function toast(title, text) { toasts.push({ title, text, t: 0 }); sfx.star(2); }
 function drawToasts(dt) {

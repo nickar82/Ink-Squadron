@@ -11,8 +11,8 @@ function startRT(kind) {
     const cfg = versusCfg(); cfg.mode = 'versus'; const L = makeLayout(cfg, mulberry(cfg.seed)); C = L.C; G = cfg.G; px = L.p; ex = L.e; st = cfg.stP;
   } else { C = 17; G = 11; px = [3, 8, 13]; st = [0, 0, 0]; }
   const sides = [
-    { idx: 0, dir: -1, color: RED, ships: [], pw: {}, name: vs ? t('player1') : t('you'), lost: 0, hits: 0 },
-    { idx: 1, dir: 1, color: (typeof SEASON !== 'undefined' && SEASON.enemy) || BLUE, ships: [], pw: {}, isAI: !vs, name: vs ? t('player2') : t('enemy'), lost: 0, hits: 0 }
+    { idx: 0, dir: -1, color: RED, ships: [], pw: {}, name: vs ? pName(1) : t('you'), lost: 0, hits: 0 },
+    { idx: 1, dir: 1, color: (typeof SEASON !== 'undefined' && SEASON.enemy) || BLUE, ships: [], pw: {}, isAI: !vs, name: vs ? pName(2) : t('enemy'), lost: 0, hits: 0 }
   ];
   px.forEach((x, i) => sides[0].ships.push(mkShip(0, x, st[i] || 0, 'fighter', -1, G)));
   if (vs) ex.forEach((x, i) => sides[1].ships.push(mkShip(1, x, (st.slice().reverse())[i] || 0, 'fighter', 1, G)));
@@ -49,6 +49,18 @@ function nextWave() {
   const e = M.sides[1]; e.ships = ex.map((x, i) => { const s = mkShip(1, x, 0, types[i] || 'fighter', 1, M.G); s.oy = -7; for (const g of s.guns) g.ink = 2; return s; });
   M.phase = 'wavein'; M.waveT = 0; M.banner = { text: t('wave_n', M.wave), t: 0, side: 1, color: e.color }; sfx.turn();
   M.ai.skill = Math.min(1, .2 + M.wave * .07);
+}
+function startWarp() {
+  M.phase = 'warp'; M.breakT = 0; M.adAsked = false; M.holds = {}; M.sector = (M.sector || 1) + 1;
+  for (const sd of M.sides) for (const s of sd.ships) for (const g of s.guns) { if (g.m > 0) eraseGun(s, g); g.ink = RT.INK; }
+  M.sides[1].ships = []; M.decals = []; M.splats = []; M.bunkers = [];
+  sfx.rocket(); setTimeout(() => sfx.zap(), 600);
+  M.onGo = null; M.afterBreak = () => { placeBunkers(Math.min(3, M.sector - 1), Math.random); nextWave(); };
+  M.onGoSet = true;
+}
+function startNuke() {
+  M.phase = 'nuke'; M.breakT = 0; M.adAsked = false; M.holds = {}; M.flash = 1.2; shake(20); sfx.boom(true); vib(200);
+  M.afterBreak = null;
 }
 function startBonus() {
   M.phase = 'bonus'; M.bonus = { t: 15, spawn: 0, targets: [], pops: 0 }; M.sides[1].ships = [];
@@ -126,7 +138,8 @@ function rtAI(dt) {
   for (const s of alive(e)) if (s.type === 'interceptor' && Math.random() < .12) { const ds = [-1, 1].filter(d => canMove(s, d)); if (ds.length) rtMove(s, ds[Math.random() * ds.length | 0]); }
 }
 function rtUpdate(dt) {
-  if (M.phase === 'countdown') { M.cd -= dt; if (M.cd <= 0) { M.phase = 'play'; sfx.turn(); } return; }
+  if (M.phase === 'countdown') { const prev = Math.ceil(M.cd); M.cd -= dt; if (Math.ceil(M.cd) !== prev && M.cd > 0) sfx.click(); if (M.cd <= 0) { M.phase = 'play'; M.ready = false; sfx.turn(); const f = M.afterBreak; M.afterBreak = null; if (f) f(); } return; }
+  if (M.phase === 'warp' || M.phase === 'nuke') { M.breakT += dt; if (M.breakT > 2.4 && !M.adAsked) { M.adAsked = true; Ads.show(M.phase, () => { if (!M) return; M.phase = 'countdown'; M.cd = 3.4; M.ready = true; }); } return; }
   if (M.phase === 'continue') { M.cont.t -= dt; if (Math.ceil(M.cont.t) !== M.cont.last) { M.cont.last = Math.ceil(M.cont.t); if (M.cont.t > 0) sfx.click(); } if (M.cont.t <= 0) rtGameOver(); return; }
   if (M.phase === 'over') return;
   for (const sd of M.sides) for (const s of sd.ships) { s.ox *= Math.pow(.0005, dt); if (Math.abs(s.ox) < .01) s.ox = 0; }
@@ -157,12 +170,18 @@ function rtUpdate(dt) {
       for (const s of alive(e)) for (const g of s.guns) if (!(g.drawLeft > 0)) g.ink = Math.min(RT.INK, g.ink + er * dt);
       rtAI(dt);
     }
-    if (M.rt === 'timeattack') { M.timeLeft -= dt; if (M.timeLeft <= 0) { M.timeLeft = 0; rtGameOver(true); return; } }
+    if (M.rt === 'timeattack') {
+      M.timeLeft -= dt; M.playT = (M.playT || 0) + dt;
+      if (M.timeLeft <= 0) { M.timeLeft = 0; rtGameOver(true); return; }
+      // long runs (> 3 min): an atomic flash freezes everything every 3 minutes = ad break (the clock is paused)
+      if (M.dur > 180 && M.playT >= (M.nextNuke || 180) && M.timeLeft > 30) { M.nextNuke = (M.nextNuke || 180) + 180; startNuke(); return; }
+    }
     if (!alive(M.sides[1]).length) {
       if (M.rt === 'rtvs') { rtFinishVs(0); return; }
       if (M.rt === 'timeattack') { M.timeLeft += 5; addFloat(W / 2, H * .3, '+5s', RED, 44); }
       gameEvent('wave', { wave: M.wave, mode: M.rt });
-      M.score += 100 * M.wave; nextWave();
+      M.score += 100 * M.wave;
+      if (M.rt === 'arcade' && M.wave % 3 === 0 && (M.wave + 1 - 1) % RT.BONUS_EVERY !== 0) startWarp(); else nextWave();
     } else if (!alive(M.sides[0]).length) {
       if (M.rt === 'rtvs') { rtFinishVs(1); return; }
       M.phase = 'continue'; M.cont = { t: 10, last: 11 }; M.holds = {}; sfx.lose();
@@ -223,7 +242,10 @@ SCENES.arena = {
       }
     }
     drawLines(lw);
+    const now = performance.now();
+    for (const id in M.drags) { const d = M.drags[id]; if (!d.ship.alive) { delete M.drags[id]; continue; } if (!d.lifted && now - d.t0 > 300) { d.lifted = true; d.ship.lifted = true; d.x0 = d.px; vib(15); sfx.click(); } }
     drawShips(dt);
+    for (const id in M.drags) { const d = M.drags[id]; if (d.lifted) drawLever(d); }
     for (const sd of M.sides) for (const s of alive(sd)) for (const g of s.guns) if (g.drawing && g.m > 0) { const p = gunPos(s, g); drawPen(p.x, p.y1, sd.color, sd.dir); }
     if (M.bonus) for (const tg of M.bonus.targets) {
       const x = colX(tg.x), y = rowY(tg.y), r = cell * .7;
@@ -250,6 +272,7 @@ SCENES.arena = {
       sketchBox(126, 36, 230, 68, { r: 14, seed: 4 });
       if (M.rt === 'timeattack') { const s = Math.ceil(M.timeLeft); txt(`⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`, 241, 72, 32, { color: s <= 10 ? RED : NAVY }); }
       else txt(M.bonus ? t('bonus') + ' ' + Math.ceil(M.bonus.t) : t('wave_n', M.wave), 241, 72, 30, { max: 210 });
+      if (M.sector > 1) txt(t('sector_n', M.sector), 241, 120, 18, { color: '#5a6c9a', max: 220 });
       sketchBox(372, 36, 150, 68, { r: 14, seed: 8 }); for (let i = 0; i < Math.min(M.credits, 5); i++) coin(400 + i * 24, 70, 13); if (M.credits > 5) txt('×' + M.credits, 500, 72, 22);
       sketchBox(536, 34, 160, 72, { r: 18, seed: 9 }); star(568, 70, 18, true); txt(String(M.score), 632, 72, 28, { max: 100 });
       txt(M.bonus ? t('bonus_hint') : M.rt === 'timeattack' ? t('wave_n', M.wave) + ' · ' + t('hold_gun') : t('hold_gun'), W / 2, H - 60, 24, { color: '#5a6c9a', stroke: '#f3f6fc', sw: 6, max: 660 });
@@ -263,24 +286,35 @@ SCENES.arena = {
         txt(b.text, 0, 3, 50, { color: b.color === RED ? RED : '#2366c9', stroke: '#fff', sw: 8, max: 440 }); ctx.restore();
       }
     }
-    if (M.phase === 'countdown') { const n = Math.ceil(M.cd); for (const r of [0, Math.PI]) { ctx.save(); ctx.translate(W / 2, rowY(M.G / 2)); ctx.rotate(r); txt(n > 0 ? String(n) : 'GO!', 0, 0, 120, { color: RED, stroke: '#fff', sw: 12 }); ctx.restore(); } }
+    if (M.phase === 'warp' || M.phase === 'nuke') drawBreak(dt);
+    if (M.phase === 'countdown') {
+      const n = Math.ceil(M.cd), rots = M.rt === 'rtvs' ? [0, Math.PI] : [0];
+      if (M.ready) { ctx.save(); ctx.fillStyle = 'rgba(243,246,252,.6)'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+      for (const r of rots) { ctx.save(); ctx.translate(W / 2, rowY(M.G / 2)); ctx.rotate(r); if (M.ready) txt(t('ready'), 0, -110, 56, { color: '#2366c9', stroke: '#fff', sw: 10, max: 600 }); txt(n > 0 ? String(n) : t('continue_go'), 0, 0, 120, { color: RED, stroke: '#fff', sw: 12, max: 600 }); ctx.restore(); }
+    }
     if (M.phase === 'continue') drawContinue();
     if (M.paused && !M.result) drawRTPause();
     if (M.result) drawRTResult(dt);
   },
   pdown(id, p) {
-    if (!M || M.paused || M.result || M.phase === 'continue' || M.phase === 'over' || M.phase === 'countdown') return;
+    if (!M || M.paused || M.result || ['continue', 'over', 'countdown', 'warp', 'nuke'].includes(M.phase)) return;
     const cands = M.rt === 'rtvs' ? M.sides : [M.sides[0]];
+    // the tail/body (behind the gun line) is the move zone; everything in front of it fires
+    for (const sd of cands) for (const s of alive(sd)) {
+      const gy = rowY(s.gunRow), behind = sd.dir < 0 ? p.y - gy : gy - p.y, dx = Math.abs(p.x - colX(s.x));
+      if (behind > BL.cell * .3 && behind < BL.cell * 2.4 && dx < BL.cell * (half(s) + .6)) { M.drags[id] = { ship: s, x0: p.x, y0: p.y, t0: performance.now(), lifted: false, px: p.x }; return; }
+    }
     let best = null;
-    for (const sd of cands) { const g = pickGun(sd, p, 46); if (g) { const q = gunPos(g.ship, g.g), d = Math.abs(p.x - q.x); if (!best || d < best.d) best = { ...g, d, sd }; } }
-    if (best) { M.holds[id] = { g: best.g, ship: best.ship }; return; }
-    for (const sd of cands) { const s = pickShip(sd, p); if (s) { M.drags[id] = { ship: s, x0: p.x }; return; } }
+    for (const sd of cands) { const g = pickGun(sd, p, 46); if (g) { const q = gunPos(g.ship, g.g), d = Math.abs(p.x - q.x), ahead = sd.dir < 0 ? q.y0 - p.y : p.y - q.y0; if (ahead > -BL.cell * .35 && (!best || d < best.d)) best = { ...g, d, sd }; } }
+    if (best) { M.holds[id] = { g: best.g, ship: best.ship }; }
   },
   pmove(id, p) {
-    if (!M) return; const d = M.drags[id];
-    if (d && d.ship.alive) { const dx = p.x - d.x0; if (Math.abs(dx) > BL.cell * .8) { const dir = Math.sign(dx); if (canMove(d.ship, dir)) rtMove(d.ship, dir); d.x0 += dir * BL.cell; } }
+    if (!M) return; const d = M.drags[id]; if (!d || !d.ship.alive) return;
+    d.px = p.x;
+    if (!d.lifted) { if (Math.hypot(p.x - d.x0, p.y - d.y0) > 22) delete M.drags[id]; return; }   // moved before the lever appeared: ignore
+    const dx = p.x - d.x0; if (Math.abs(dx) > BL.cell * .8) { const dir = Math.sign(dx); if (canMove(d.ship, dir)) rtMove(d.ship, dir); d.x0 += dir * BL.cell; }
   },
-  pup(id) { if (!M) return; delete M.holds[id]; delete M.drags[id]; },
+  pup(id) { if (!M) return; delete M.holds[id]; const d = M.drags[id]; if (d) d.ship.lifted = false; delete M.drags[id]; },
   back() { if (!M) { go('menu'); return true; } if (M.result) { quitMatch(); return true; } M.paused = !M.paused; return true; }
 };
 function coin(x, y, r) { ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = YEL; ctx.fill(); ctx.strokeStyle = NAVY; ctx.lineWidth = 2.5; ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, r * .55, 0, 7); ctx.lineWidth = 1.5; ctx.stroke(); ctx.restore(); }
@@ -308,7 +342,7 @@ function drawRTResult(dt) {
   ctx.save(); ctx.translate(W / 2, H / 2); if (vs && r.winner === 1) ctx.rotate(Math.PI); ctx.scale(easeBack(k), easeBack(k)); ctx.translate(-W / 2, -H / 2);
   const y = H / 2 - 290; sketchBox(80, y, 560, 580, { r: 36 });
   if (vs) {
-    txt(r.winner === 0 ? t('p1_wins') : t('p2_wins'), W / 2, y + 80, 52, { color: r.winner === 0 ? RED : '#2366c9', stroke: '#fff', sw: 10, max: 500 });
+    txt(t('wins_n', M.sides[r.winner].name), W / 2, y + 80, 52, { color: r.winner === 0 ? RED : '#2366c9', stroke: '#fff', sw: 10, max: 500 });
     drawShip(W / 2, y + 220, 44, -1, { color: M.sides[r.winner].color, t: r.t, exhaust: true });
   } else {
     txt(r.timeUp ? t('time_up') : t('game_over'), W / 2, y + 80, 62, { color: RED, stroke: '#fff', sw: 10, max: 500 });
@@ -318,8 +352,50 @@ function drawRTResult(dt) {
     txt(t('wave_n', r.wave), W / 2, y + 345, 26, { max: 500 });
   }
   const by = y + 400;
-  bigButton('rtagain', 140, by, 440, 84, vs ? t('rematch') : t('play_again'), { fill: YEL, icon: iconPlay, fs: 36 }, () => { const kk = M.rt; M.token = null; startRT(kk); });
+  bigButton('rtagain', 140, by, 440, 84, vs ? t('rematch') : t('play_again'), { fill: YEL, icon: iconPlay, fs: 36 }, () => { const kk = M.rt; Ads.show('again', () => { if (M) M.token = null; startRT(kk); }); });
   bigButton('rtmenu', 140, by + 100, 440, 70, t('menu'), { fs: 28 }, () => quitMatch());
   ctx.restore();
   if (vs && r.winner === 1) for (const h of hits) if (['rtagain', 'rtmenu'].includes(h.id)) h.rot = true;
+}
+
+/* ---- break screens: warp (Arcade) and atomic flash (Time Attack) ---- */
+function drawBreak(dt) {
+  const k = M.breakT;
+  if (M.phase === 'warp') {
+    ctx.save(); ctx.fillStyle = `rgba(243,246,252,${Math.min(.92, k * .6)})`; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = NAVY; ctx.lineCap = 'round';
+    for (let i = 0; i < 46; i++) {
+      const x = (h1(i * 7) * .5 + .5) * W, sp = 600 + (h1(i * 13) * .5 + .5) * 900, y = ((h1(i * 3) * .5 + .5) * H + k * sp) % (H + 200) - 100, L = 40 + k * 120;
+      ctx.globalAlpha = .25 + .4 * (h1(i) * .5 + .5); ctx.lineWidth = 2 + (i % 3); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - L); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.restore();
+    const n = alive(M.sides[0]).length;
+    alive(M.sides[0]).forEach((s, i) => drawShip(W / 2 + (i - (n - 1) / 2) * 120, H * .62 - Math.min(1, k) * 60 + Math.sin(k * 20 + i) * 3, 34, -1, { color: RED, t: M.t + i, exhaust: true }));
+    txt(t('warp'), W / 2, H * .34, 58, { color: '#2366c9', stroke: '#fff', sw: 10, max: 600, rot: -.04 });
+    txt(t('sector_n', M.sector), W / 2, H * .34 + 60, 34, { color: NAVY, stroke: '#fff', sw: 7, max: 600 });
+  } else {
+    const a = Math.max(0, 1 - k * .8);
+    ctx.save(); ctx.fillStyle = `rgba(255,250,220,${.55 + a * .45})`; ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = rowY(M.G / 2), r = 60 + k * 260;
+    ctx.strokeStyle = '#ff7a1f'; ctx.lineWidth = 10; ctx.globalAlpha = Math.max(0, 1 - k / 2.4); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+    // mushroom cloud doodle
+    const g = Math.min(1, k / 1.2), base = cy + 40;
+    ctx.fillStyle = '#ffb02e'; ctx.strokeStyle = NAVY; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(cx - 26, base); ctx.quadraticCurveTo(cx - 14, base - 80 * g, cx - 20, base - 150 * g); ctx.lineTo(cx + 20, base - 150 * g); ctx.quadraticCurveTo(cx + 14, base - 80 * g, cx + 26, base); ctx.closePath(); ctx.fill(); ctx.stroke();
+    for (let i = 0; i < 7; i++) { const a2 = i / 6 * Math.PI, rr = 34 * g; ctx.beginPath(); ctx.arc(cx + Math.cos(a2) * 70 * g, base - 160 * g - Math.sin(a2) * 40 * g, rr, 0, 7); ctx.fillStyle = i % 2 ? '#ff7a1f' : '#ffd23a'; ctx.fill(); ctx.stroke(); }
+    ctx.restore();
+    txt(t('nuke'), W / 2, H * .2, 54, { color: RED, stroke: '#fff', sw: 10, max: 620, rot: -.04 });
+    txt(t('frozen'), W / 2, H * .2 + 56, 26, { color: NAVY, stroke: '#fff', sw: 6, max: 620 });
+  }
+}
+
+/* ---- the movement lever (hold a plane's tail for 0.3 s) ---- */
+function drawLever(d) {
+  const s = d.ship, sd = sideOf(s), cell = BL.cell, x = colX(s.x + s.ox), y = rowY(s.gunRow) - sd.dir * cell * 2.55;
+  const w = cell * 5.2, h = Math.max(34, cell * .9), off = clamp(d.px - x, -w / 2 + h / 2, w / 2 - h / 2);
+  ctx.save();
+  rrPath(ctx, x - w / 2, y - h / 2, w, h, h / 2); ctx.fillStyle = 'rgba(159,225,203,.92)'; ctx.fill(); ctx.strokeStyle = NAVY; ctx.lineWidth = 3; ctx.stroke();
+  for (const dir of [-1, 1]) { if (!canMove(s, dir)) continue; const ax = x + dir * (w / 2 - h * .45); ctx.beginPath(); ctx.moveTo(ax, y); ctx.lineTo(ax - dir * h * .3, y - h * .25); ctx.lineTo(ax - dir * h * .3, y + h * .25); ctx.closePath(); ctx.fillStyle = NAVY; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(x + off, y, h * .55, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0F6E56'; ctx.lineWidth = 4; ctx.stroke();
+  ctx.restore();
 }

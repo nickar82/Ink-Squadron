@@ -3,7 +3,7 @@
    Lockstep: each phone sends its own actions (dice values included).
    ========================================================= */
 const Net = { host: false, connected: false, peer: '', status: '', busy: false };
-function pilotName() { if (!save.pilot) { save.pilot = 'Pilot-' + (100 + Math.random() * 900 | 0); persist(); } return save.pilot; }
+function pilotName() { const n = (save.names || {}).p1; if (n && n.trim()) return n.trim().toUpperCase(); if (!save.pilot) { save.pilot = 'Pilot-' + (100 + Math.random() * 900 | 0); persist(); } return save.pilot; }
 function netAvailable() { const b = Bridge(); try { return !!(b && b.netAvailable && b.netAvailable()); } catch (e) { return false; } }
 function netHost() { const b = Bridge(); if (!b) return; Net.host = true; Net.connected = false; Net.status = t('net_hosting'); Net.busy = true; try { b.netHost(pilotName()); } catch (e) { Net.status = t('net_error'); } }
 function netJoin() { const b = Bridge(); if (!b) return; Net.host = false; Net.connected = false; Net.status = t('net_searching'); Net.busy = true; try { b.netJoin(pilotName()); } catch (e) { Net.status = t('net_error'); } }

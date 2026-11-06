@@ -6,6 +6,31 @@ let scene = null, sceneT = 0, fade = 0;
 function go(name) { scene = SCENES[name]; sceneT = 0; fade = 1; hits = []; pressed = null; }
 function overlayBlocks() { return (scene === SCENES.game || scene === SCENES.arena) && M && (M.paused || M.result || M.netLost || M.phase === 'continue'); }
 const SCENES = {};
+/* ---- player names ---- */
+function pName(i) { const n = (save.names || {})['p' + i]; return n && n.trim() ? n.trim().toUpperCase() : t(i === 1 ? 'player1' : 'player2'); }
+let nameBox = null;
+function askName(title, value, cb) {
+  if (nameBox) return;
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(243,246,252,.88);display:flex;align-items:flex-start;justify-content:center;z-index:10;padding-top:18vh';
+  const card = document.createElement('div');
+  card.style.cssText = `width:min(86vw,460px);background:#fbfdff;border:4px solid ${NAVY};border-radius:26px;padding:22px 22px 18px;box-shadow:4px 6px 0 rgba(27,42,94,.18);font-family:${FONT};text-align:center`;
+  const h = document.createElement('div'); h.textContent = title; h.style.cssText = `font-weight:900;font-style:italic;font-size:26px;color:${NAVY};margin-bottom:14px`;
+  const inp = document.createElement('input'); inp.value = value || ''; inp.maxLength = 12; inp.placeholder = 'ACE';
+  inp.setAttribute('autocomplete', 'off'); inp.setAttribute('autocapitalize', 'characters'); inp.setAttribute('enterkeyhint', 'done');
+  inp.style.cssText = `width:100%;box-sizing:border-box;font:italic 900 30px ${FONT};color:${NAVY};text-align:center;border:3px solid ${NAVY};border-radius:16px;padding:10px;background:#fff;outline:none;text-transform:uppercase`;
+  const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:12px;margin-top:16px';
+  const mk = (label, bg) => { const b = document.createElement('button'); b.textContent = label; b.style.cssText = `flex:1;font:italic 900 22px ${FONT};color:${NAVY};background:${bg};border:3px solid ${NAVY};border-radius:18px;padding:12px`; return b; };
+  const skip = mk(t('skip'), '#fff'), ok = mk(t('ok'), YEL);
+  row.append(skip, ok); card.append(h, inp, row); wrap.append(card); document.body.append(wrap); nameBox = wrap;
+  const close = (v) => { wrap.remove(); nameBox = null; sfx.click(); cb(v); };
+  ok.onclick = () => close(inp.value.replace(/[<>]/g, '').trim().slice(0, 12));
+  skip.onclick = () => close(null);
+  inp.onkeydown = e => { if (e.key === 'Enter') ok.onclick(); e.stopPropagation(); };
+  wrap.addEventListener('pointerdown', e => e.stopPropagation());
+  setTimeout(() => inp.focus(), 60);
+}
+function setName(i, v) { save.names = save.names || {}; if (v != null) save.names['p' + i] = v; persist(); }
 function header(title, onBack) {
   ui('back', 28, 46, 84, 84, {}, (x, y, w, h) => { sketchBox(x, y, w, h, { r: 22 }); iconBack(x + w / 2, y + h / 2, 52); }, onBack);
   txt(title, W / 2 + 30, 92, 56, { stroke: '#fff', sw: 10, shadow: '#9fb8e8', rot: -.03, max: 520 });
@@ -56,7 +81,11 @@ SCENES.lang = {
         sketchBox(bx, by, w, h, { r: 24, fill: save.lang === L.code ? YEL : '#fbfdff', seed: i * 3 + 2 });
         drawFlag(L.code, bx + 24, by + h / 2 - 30, 90, 60);
         txt(L.name, bx + 130, by + h / 2 + 2, 30, { align: 'left', max: w - 145 });
-      }, () => { setLang(L.code); go(this.from || 'menu'); });
+      }, () => {
+        setLang(L.code);
+        if (!this.from && !save.nameAsked) { save.nameAsked = true; persist(); askName(t('your_name'), (save.names || {}).p1 || '', v => { setName(1, v); go('menu'); }); }
+        else go(this.from || 'menu');
+      });
     });
   },
   back() { if (this.from) { go(this.from); return true; } return false; }
@@ -124,9 +153,16 @@ SCENES.newgame = {
     card('ng_classic', 180, 170, YEL, (x, y, s) => drawDie(x, y, s * .8, 5, { rot: -.15 }), t('classic'), t('classic_sub'), t('level_n', lv), () => newMatch(levelCfg(lv)));
     card('ng_arcade', 370, 170, '#dde9ff', iconJoy, t('arcade'), t('arcade_sub'), save.hi.arcade ? t('best') + ' ' + save.hi.arcade : '', () => startRT('arcade'));
     card('ng_ta', 560, 170, '#e3f6ea', iconClock, t('time_attack'), t('ta_sub'), save.hi['ta' + save.ta.dur] ? t('best') + ' ' + save.hi['ta' + save.ta.dur] : '', () => startRT('timeattack'));
-    chips('tadur', 200, 750, 400, 64, [['60s', 60], ['120s', 120], ['180s', 180]], save.ta.dur, v => { save.ta.dur = v; persist(); });
-    txt(t('ta_length'), 130, 782, 22, { color: '#4a5a88', max: 130 });
-    txt(t('credits_info'), W / 2, 860, 22, { color: '#5a6c9a', max: 640 });
+    const std = [60, 120, 180].includes(save.ta.dur), cm = save.ta.custom || 5;
+    chips('tadur', 180, 750, 480, 64, [['60s', 60], ['120s', 120], ['180s', 180], [t('custom'), 'c']], std ? save.ta.dur : 'c', v => { save.ta.dur = v === 'c' ? cm * 60 : v; persist(); });
+    txt(t('ta_length'), 110, 782, 22, { color: '#4a5a88', max: 130 });
+    if (!std) {
+      const step = d => { save.ta.custom = clamp((save.ta.custom || 5) + d, 1, 60); save.ta.dur = save.ta.custom * 60; persist(); };
+      [[-5, '−5'], [-1, '−'], [1, '+'], [5, '+5']].forEach(([d, l], i) => ui('tac' + i, [180, 270, 520, 610][i], 830, 80, 60, {}, (x, y, w, h) => { sketchBox(x, y, w, h, { r: 18 }); txt(l, x + w / 2, y + h / 2 + 2, 28); }, () => step(d)));
+      txt(t('minutes_n', save.ta.custom || 5), 435, 862, 34, { color: '#2366c9', max: 150 });
+    }
+    txt(t('credits_info'), W / 2, std ? 860 : 935, 22, { color: '#5a6c9a', max: 640 });
+    if (!std && save.ta.dur > 180) txt(t('ta_breaks'), W / 2, 968, 18, { color: '#7a88aa', max: 640 });
   },
   back() { go('menu'); return true; }
 };
@@ -177,8 +213,9 @@ SCENES.settings = {
   confirm: 0,
   draw(gt) {
     drawGrid(40, 0, 0); header(t('settings'), () => go('menu'));
-    let y = 170; const st = 92;
+    let y = 160; const st = 86;
     const L = LANGS.find(l => l.code === (save.lang || 'en'));
+    valueRow('sname', y, t('your_name'), pName(1), () => askName(t('your_name'), (save.names || {}).p1 || '', v => setName(1, v))); y += st;
     valueRow('slang', y, t('language'), L.name, () => { SCENES.lang.from = 'settings'; go('lang'); }, (x, yy, w, h) => drawFlag(L.code, x + w - 290, yy + 22, 54, 36)); y += st;
     toggleRow('ssound', y, t('sound'), save.settings.sound, () => { save.settings.sound = !save.settings.sound; persist(); }); y += st;
     toggleRow('smusic', y, t('music'), save.settings.music !== false, () => { save.settings.music = save.settings.music === false; persist(); }); y += st;
@@ -206,26 +243,28 @@ SCENES.setup = {
     drawGrid(40, 0, 0); header(t('vs'), () => go('menu'));
     const net = save.vs.net && netAvailable();
     txt(net ? t('vs_sub_net') : t('vs_sub'), W / 2, 170, 23, { color: '#5a6c9a', max: 640 });
-    let y = 200;
+    const nf = (id, x, i, col) => ui(id, x, 192, 290, 58, {}, (bx, by, w, h) => { sketchBox(bx, by, w, h, { r: 18, fill: col, seed: i * 7 }); txt(pName(i), bx + w / 2, by + h / 2 + 2, 24, { max: w - 50 }); ctx.save(); ctx.strokeStyle = NAVY; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(bx + w - 30, by + 40); ctx.lineTo(bx + w - 16, by + 18); ctx.stroke(); ctx.restore(); }, () => askName(i === 1 ? t('player1') : t('player2'), (save.names || {})['p' + i] || '', v => setName(i, v)));
+    nf('name1', 60, 1, '#ffe1de'); if (!net) nf('name2', 370, 2, '#dde9ff');
+    let y = 262;
     for (let i = 1; i <= 5; i++) {
       const x = 60 + (i - 1) * 124;
-      ui('ships' + i, x, y, 112, 128, {}, (bx, by, w, h) => {
+      ui('ships' + i, x, y, 112, 104, {}, (bx, by, w, h) => {
         const on = save.vs.ships >= i, sel = save.vs.ships === i;
         sketchBox(bx, by, w, h, { r: 22, fill: sel ? YEL : on ? '#fff6d0' : '#fbfdff', seed: i * 5 });
-        drawShip(bx + w / 2, by + 54, 22, -1, { color: on ? RED : '#aab4c8', alpha: on ? 1 : .6, t: gt, exhaust: on });
-        txt(String(i), bx + w / 2, by + h - 20, 28);
+        drawShip(bx + w / 2, by + 42, 19, -1, { color: on ? RED : '#aab4c8', alpha: on ? 1 : .6, t: gt, exhaust: on });
+        txt(String(i), bx + w / 2, by + h - 16, 24);
       }, () => { save.vs.ships = i; persist(); });
     }
     const row = (yy, label) => txt(label, 60, yy + 32, 22, { align: 'left', color: '#4a5a88', max: 190 });
-    y = 360; row(y, t('battlefield')); chips('len', 260, y, 400, 64, [[t('short'), 0], [t('medium'), 1], [t('long'), 2]], save.vs.len, v => { save.vs.len = v; persist(); });
-    y += 88; row(y, t('powerups')); chips('pw', 260, y, 400, 64, [[t('on'), true], [t('off'), false]], save.vs.pw, v => { save.vs.pw = v; persist(); });
-    y += 88; row(y, t('mode')); chips('rt', 260, y, 400, 64, [[t('turn_based'), false], [t('real_time'), true]], !!save.vs.rt, v => { save.vs.rt = v; if (v) save.vs.net = false; persist(); });
-    y += 88; if (!save.vs.rt) { row(y, t('shot_clock')); chips('clk', 260, y, 400, 64, [[t('off'), 0], ['10s', 10], ['20s', 20]], save.vs.clock || 0, v => { save.vs.clock = v; persist(); }); }
-    y += 88; row(y, t('device'));
+    y = 392; row(y, t('battlefield')); chips('len', 260, y, 400, 64, [[t('short'), 0], [t('medium'), 1], [t('long'), 2]], save.vs.len, v => { save.vs.len = v; persist(); });
+    y += 80; row(y, t('powerups')); chips('pw', 260, y, 400, 64, [[t('on'), true], [t('off'), false]], save.vs.pw, v => { save.vs.pw = v; persist(); });
+    y += 80; row(y, t('mode')); chips('rt', 260, y, 400, 64, [[t('turn_based'), false], [t('real_time'), true]], !!save.vs.rt, v => { save.vs.rt = v; if (v) save.vs.net = false; persist(); });
+    y += 80; if (!save.vs.rt) { row(y, t('shot_clock')); chips('clk', 260, y, 400, 64, [[t('off'), 0], ['10s', 10], ['20s', 20]], save.vs.clock || 0, v => { save.vs.clock = v; persist(); }); }
+    y += 80; row(y, t('device'));
     if (netAvailable()) chips('dev', 260, y, 400, 64, [[t('this_phone'), false], [t('wifi_bt'), true]], !!save.vs.net, v => { save.vs.net = v; if (v) save.vs.rt = false; persist(); });
     else txt(t('net_android_only'), 460, y + 32, 20, { color: '#7a88aa', max: 400 });
-    y += 110;
-    bigButton('startvs', 110, Math.min(y, H - 130), 500, 100, net ? t('connect') : t('start_battle'), { fill: YEL, hatch: 'rgba(230,160,20,0.35)', primary: true, icon: iconPlay, fs: 38 }, () => {
+    y += 96;
+    bigButton('startvs', 110, Math.min(y, H - 118), 500, 96, net ? t('connect') : t('start_battle'), { fill: YEL, hatch: 'rgba(230,160,20,0.35)', primary: true, icon: iconPlay, fs: 38 }, () => {
       if (net) { go('lobby'); return; }
       if (save.vs.rt) startRT('rtvs'); else newMatch(versusCfg());
     });

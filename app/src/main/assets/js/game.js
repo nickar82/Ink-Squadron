@@ -12,7 +12,7 @@ function drawBoardBase(dt, opts = {}) {
   // stains
   for (const s of M.splats) {
     const x = colX(s.x), y = rowY(s.r), R = s.size * cell;
-    if (SPRITES.ready) drawSprite('splat' + (1 + (s.seed % 3 + 3) % 3), 5, x, y, R * 2.4, s.color || NAVY, .14, (s.seed % 10) * .6, s.seed % 2 === 0);
+    if (SPRITES.ready) drawSprite('splat' + (1 + (s.seed % 3 + 3) % 3), 5, x, y, R * 3.2, s.color || NAVY, .15, (s.seed % 10) * .6, s.seed % 2 === 0);
     else { ctx.save(); ctx.globalAlpha = .18; ctx.fillStyle = NAVY; ctx.beginPath(); for (let i = 0; i < 18; i++) { const a = i / 18 * 6.283, rr = R * (.7 + .35 * h1(s.seed + i)); ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); ctx.restore(); }
   }
   const lw = Math.max(3, cell * .14);
@@ -40,12 +40,18 @@ function drawLines(lw) {
 }
 function drawShips(dt, hlFn) {
   const cell = BL.cell;
-  for (const sd of M.sides) for (const s of sd.ships) {
+  const all = []; for (const sd of M.sides) for (const s of sd.ships) all.push([s, sd]);
+  all.sort((a, b) => (a[0].alive ? 1 : 0) - (b[0].alive ? 1 : 0));
+  for (const [s, sd] of all) {
     if (s.flash > 0) s.flash = Math.max(0, s.flash - dt * 2.5);
     if (!s.alive) s.deadT += dt;
     const x = colX(s.x + s.ox), y = rowY(s.gunRow + s.oy);
     if (hlFn) hlFn(s, sd, x, y);
+    s.liftV = (s.liftV || 0) + ((s.lifted && s.alive ? 1 : 0) - (s.liftV || 0)) * Math.min(1, dt * 14);
+    const L = 1 + .07 * s.liftV; ctx.save();
+    if (s.liftV > .01) { const cy = y - sd.dir * cell * .4; ctx.save(); ctx.globalAlpha = .12 * s.liftV; ctx.fillStyle = NAVY; ellipse(x + cell * .35, cy + cell * .5, cell * 1.4, cell * .9); ctx.fill(); ctx.restore(); ctx.translate(x, cy); ctx.scale(L, L); ctx.translate(-x, -cy); }
     drawShip(x, y, cell, sd.dir, { type: s.type, color: sd.color, t: M.t + s.id, exhaust: true, dead: !s.alive, deadT: s.deadT, killColor: s.killColor, flash: s.flash, shield: s.shield, maxHp: s.maxHp, hp: s.hp, armor: s.armor, damage: s.parts ? 0 : s.maxHp - s.hp, seed: s.seed, parts: s.parts });
+    ctx.restore();
   }
 }
 SCENES.game = {
@@ -276,7 +282,7 @@ function drawResult(dt) {
   ctx.save(); ctx.translate(W / 2, H / 2); if (vs && r.winner === 1 && !M.net) ctx.rotate(Math.PI); const s = easeBack(k); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2);
   const y = H / 2 - 290;
   sketchBox(80, y, 560, 580, { r: 36 });
-  const title = M.net ? (win ? t('you_win') : t('you_lose')) : vs ? (r.winner === 0 ? t('p1_wins') : t('p2_wins')) : win ? t('victory') : t('shot_down');
+  const title = M.net ? (win ? t('you_win') : t('you_lose')) : vs ? t('wins_n', M.sides[r.winner].name) : win ? t('victory') : t('shot_down');
   const col = (vs && !M.net) ? (r.winner === 0 ? RED : '#2366c9') : win ? RED : NAVY;
   txt(title, W / 2, y + 80, vs ? 52 : 66, { color: col, stroke: '#fff', sw: 10, rot: -.04, max: 500 });
   inkLine(W / 2 - 200, y + 125, W / 2 + 200, y + 118, col, 6, 5);
