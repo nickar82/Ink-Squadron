@@ -11,9 +11,9 @@
 -->
 <resources>
     <!-- AdMob -->
-    <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
-    <string name="admob_app_open" translatable="false">ca-app-pub-3940256099942544/9257395921</string>
-    <string name="admob_interstitial" translatable="false">ca-app-pub-3940256099942544/1033173712</string>
+    <string name="admob_app_id" translatable="false">ca-app-pub-9998734808633197~2489563313</string>
+    <string name="admob_app_open" translatable="false">ca-app-pub-9998734808633197/9984909953</string>
+    <string name="admob_interstitial" translatable="false">ca-app-pub-9998734808633197/8671828284</string>
 
     <!-- Play Games Services: 0 = disabled -->
     <string name="game_services_project_id" translatable="false">0</string>

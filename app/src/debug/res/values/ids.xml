@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds use Google's TEST ad units, so testing on your own phone never touches the real ads. -->
+<resources>
+    <string name="admob_app_open" translatable="false">ca-app-pub-3940256099942544/9257395921</string>
+    <string name="admob_interstitial" translatable="false">ca-app-pub-3940256099942544/1033173712</string>
+</resources>
