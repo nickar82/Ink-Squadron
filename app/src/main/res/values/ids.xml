@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ALL IDS IN ONE PLACE. Replace the values, rebuild, done.
+
+  1) AdMob (admob.google.com): create the app + 2 ad units (App open, Interstitial).
+     The values below are Google's official TEST ids - safe for development.
+     Do NOT publish with test ids, and never click your own real ads.
+  2) Play Games Services (Play Console > Grow > Play Games Services):
+     paste the numeric project id, then create achievements/leaderboards and
+     paste each id (looks like CgkI...). Empty = not reported.
+-->
+<resources>
+    <!-- AdMob -->
+    <string name="admob_app_id" translatable="false">ca-app-pub-9998734808633197~2489563313</string>
+    <string name="admob_app_open" translatable="false">ca-app-pub-9998734808633197/9984909953</string>
+    <string name="admob_interstitial" translatable="false">ca-app-pub-9998734808633197/8671828284</string>
+
+    <!-- Play Games Services: 0 = disabled -->
+    <string name="game_services_project_id" translatable="false">0</string>
+
+    <!-- Achievements -->
+    <string name="ach_first_win" translatable="false"></string>
+    <string name="ach_secret" translatable="false"></string>
+    <string name="ach_flawless" translatable="false"></string>
+    <string name="ach_boss" translatable="false"></string>
+    <string name="ach_cut25" translatable="false"></string>
+    <string name="ach_rocket_kill" translatable="false"></string>
+    <string name="ach_raider" translatable="false"></string>
+    <string name="ach_bunker20" translatable="false"></string>
+    <string name="ach_level25" translatable="false"></string>
+    <string name="ach_level50" translatable="false"></string>
+    <string name="ach_level100" translatable="false"></string>
+    <string name="ach_stars100" translatable="false"></string>
+    <string name="ach_arcade10" translatable="false"></string>
+    <string name="ach_bonus20" translatable="false"></string>
+    <string name="ach_ta5000" translatable="false"></string>
+    <string name="ach_vs_win" translatable="false"></string>
+    <string name="ach_nearby_win" translatable="false"></string>
+    <string name="ach_variety" translatable="false"></string>
+    <string name="ach_season" translatable="false"></string>
+
+    <!-- Leaderboards -->
+    <string name="lb_total_stars" translatable="false"></string>
+    <string name="lb_arcade" translatable="false"></string>
+    <string name="lb_time_attack_60" translatable="false"></string>
+    <string name="lb_time_attack_120" translatable="false"></string>
+    <string name="lb_time_attack_180" translatable="false"></string>
+</resources>

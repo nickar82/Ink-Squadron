@@ -3,6 +3,9 @@ package com.inksquadron.game;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,20 +24,26 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
+import org.json.JSONObject;
+
 /**
- * Ink Squadron – thin native shell around the HTML5 game in assets/index.html.
- * Provides: fullscreen immersive mode, display-cutout safe area, Android back button,
- * vibration bridge, and pause/resume when the app goes to background.
+ * Ink Squadron – native shell around the HTML5 game in assets/.
+ * Fullscreen, notch safe-area, Back button, vibration, pause/resume,
+ * plus bridges to AdMob (AdsManager), Play Games (PgsManager) and Nearby (NearbyManager).
  */
 public class MainActivity extends Activity {
 
     private WebView webView;
     private FrameLayout root;
+    AdsManager ads;
+    PgsManager pgs;
+    NearbyManager nearby;
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);   // portrait only, always
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         root = new FrameLayout(this);
@@ -49,7 +58,7 @@ public class MainActivity extends Activity {
 
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);              // localStorage = level progress & settings
+        s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowFileAccess(true);
         s.setSupportZoom(false);
@@ -59,13 +68,16 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient());
         webView.setWebChromeClient(new WebChromeClient());
+
+        ads = new AdsManager(this);
+        pgs = new PgsManager(this);
+        nearby = new NearbyManager(this);
         webView.addJavascriptInterface(new GameBridge(this), "AndroidBridge");
 
         root.addView(webView, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         setContentView(root);
 
-        // Keep the game clear of camera notches / punch holes.
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             int top = 0, bottom = 0, left = 0, right = 0;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -80,19 +92,27 @@ public class MainActivity extends Activity {
             v.setPadding(left, top, right, bottom);
             return insets;
         });
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             WindowManager.LayoutParams lp = getWindow().getAttributes();
             lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
             getWindow().setAttributes(lp);
         }
 
-        if (savedInstanceState != null) {
-            webView.restoreState(savedInstanceState);
-        } else {
-            webView.loadUrl("file:///android_asset/index.html");
-        }
+        if (savedInstanceState != null) webView.restoreState(savedInstanceState);
+        else webView.loadUrl("file:///android_asset/index.html");
         hideSystemUi();
+
+        ads.start();   // consent form (EU) → AdMob → App Open ad on launch
+        pgs.start();   // Play Games sign-in (only when a real project id is configured)
+    }
+
+    /** Calls a JS function safely from any thread. */
+    void js(final String code) {
+        runOnUiThread(() -> { if (webView != null) webView.evaluateJavascript(code, null); });
+    }
+
+    void netEvent(JSONObject o) {
+        js("window.inkNet&&window.inkNet.onEvent(" + JSONObject.quote(o.toString()) + ")");
     }
 
     @SuppressWarnings("deprecation")
@@ -126,10 +146,15 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (webView == null) { super.onBackPressed(); return; }
-        // Let the game decide: pause / close sub-screen. On the main menu it returns false → exit.
         webView.evaluateJavascript("(window.inkBack && window.inkBack()) ? 'y' : 'n'", value -> {
             if (value == null || !value.contains("y")) finish();
         });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        nearby.onPermissionsResult(requestCode, grantResults);
     }
 
     @Override
@@ -159,6 +184,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (nearby != null) nearby.stop();
         if (webView != null) {
             root.removeView(webView);
             webView.destroy();
@@ -169,23 +195,48 @@ public class MainActivity extends Activity {
 
     /** Methods callable from JavaScript as window.AndroidBridge.* */
     public static class GameBridge {
-        private final Context ctx;
+        private final MainActivity a;
 
-        GameBridge(Context c) { ctx = c.getApplicationContext(); }
+        GameBridge(MainActivity a) { this.a = a; }
 
         @JavascriptInterface
         @SuppressWarnings("deprecation")
         public void vibrate(int ms) {
             try {
-                Vibrator v = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
+                Vibrator v = (Vibrator) a.getSystemService(Context.VIBRATOR_SERVICE);
                 if (v == null || !v.hasVibrator()) return;
                 int d = Math.max(5, Math.min(ms, 400));
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    v.vibrate(VibrationEffect.createOneShot(d, VibrationEffect.DEFAULT_AMPLITUDE));
-                } else {
-                    v.vibrate(d);
-                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) v.vibrate(VibrationEffect.createOneShot(d, VibrationEffect.DEFAULT_AMPLITUDE));
+                else v.vibrate(d);
             } catch (Exception ignored) { }
         }
+
+        // ---- ads ----
+        @JavascriptInterface public void adsInterstitial(String reason) { a.ads.showInterstitial(); }
+        @JavascriptInterface public void adsPrivacy() { a.ads.showPrivacyOptions(); }
+        @JavascriptInterface public void openStore() {
+            a.runOnUiThread(() -> {
+                String pkg = a.getPackageName();
+                try { a.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+                catch (Exception e) {
+                    try { a.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + pkg))); } catch (Exception ignored) { }
+                }
+            });
+        }
+
+        // ---- Play Games ----
+        @JavascriptInterface public boolean pgsAvailable() { return a.pgs.isConfigured(); }
+        @JavascriptInterface public void pgsSignIn() { a.pgs.signIn(); }
+        @JavascriptInterface public void pgsAchievement(String key, int inc) { a.pgs.achievement(key, inc); }
+        @JavascriptInterface public void pgsScore(String key, int value) { a.pgs.score(key, value); }
+        @JavascriptInterface public void pgsShowAchievements() { a.pgs.showAchievements(); }
+        @JavascriptInterface public void pgsShowLeaderboards() { a.pgs.showLeaderboards(); }
+
+        // ---- Nearby (Wi-Fi / Bluetooth) ----
+        @JavascriptInterface public boolean netAvailable() { return true; }
+        @JavascriptInterface public void netHost(String name) { a.nearby.host(name); }
+        @JavascriptInterface public void netJoin(String name) { a.nearby.join(name); }
+        @JavascriptInterface public void netSend(String data) { a.nearby.send(data); }
+        @JavascriptInterface public void netStop() { a.nearby.stop(); }
     }
 }
