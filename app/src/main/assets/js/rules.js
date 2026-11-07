@@ -129,7 +129,7 @@ function newMatch(cfg) {
   const tok = M.token;
   Intro.start(introLabel(), () => {
     if (M.token !== tok) return;
-    if (eggPw) { addFloat(W / 2, H * .64, t('egg_pw'), RED, 34); mascotSay('thumbs', 'm_egg', { force: true, pri: 3 }); }
+    if (eggPw) { setTimeout(() => { if (M.token === tok) addFloat(W / 2, H * .47, t('egg_pw'), RED, 34); }, 1500); mascotSay('thumbs', 'm_egg', { force: true, pri: 3 }); }
     else if (supply) { M.supply = supply; addFloat(W / 2, H * .45, t('supply', supply), RED, 40); setTimeout(() => mascotSay('thumbs', 'm_supply', { force: true, pri: 3 }), 900); }
     startTurn();
   });

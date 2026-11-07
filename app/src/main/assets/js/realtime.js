@@ -285,7 +285,7 @@ SCENES.arena = {
       ui('rpause', 26, 30, 84, 80, {}, (x, y, w, h) => { sketchBox(x, y, w, h, { r: 20 }); iconPause(x + w / 2, y + h / 2, 46); }, () => { M.paused = true; });
       sketchBox(126, 36, 230, 68, { r: 14, seed: 4 });
       if (M.rt === 'timeattack') { const s = Math.ceil(M.timeLeft); txt(`⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`, 241, 72, 32, { color: s <= 10 ? RED : NAVY }); }
-      else txt(M.bonus ? t('bonus') + ' ' + Math.ceil(M.bonus.t) : t('wave_n', M.wave), 241, 72, 30, { max: 210 });
+      else txt(M.bonus ? t('bonus') + ' ' + Math.ceil(M.bonus.t) : t('wave_n', Math.max(1, M.wave)), 241, 72, 30, { max: 210 });
       if (M.sector > 1) txt(t('sector_n', M.sector), 241, 120, 18, { color: '#5a6c9a', max: 220 });
       sketchBox(372, 36, 150, 68, { r: 14, seed: 8 }); for (let i = 0; i < Math.min(M.credits, 5); i++) coin(400 + i * 24, 70, 13); if (M.credits > 5) txt('×' + M.credits, 500, 72, 22);
       sketchBox(536, 34, 160, 72, { r: 18, seed: 9 }); star(568, 70, 18, true); txt(String(M.score), 632, 72, 28, { max: 100 });

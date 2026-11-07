@@ -27,6 +27,8 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
+          # also build an (unsigned) minified release to catch R8/shrinker problems early
+          if [ -z "$KS" ]; then ./gradlew --no-daemon assembleRelease; fi
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -36,6 +38,12 @@ jobs:
 
       # Optional: signed release build (AAB for Google Play + APK).
       # Add repository secrets KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD to enable.
+      - name: Check AdMob ids
+        run: |
+          if grep -q "ca-app-pub-3940256099942544" app/src/main/res/values/ids.xml; then
+            echo "::warning title=AdMob test ids::ids.xml still has Google's TEST ad ids. Replace them before uploading to Google Play."
+          fi
+
       - name: Build signed release
         if: env.KS != ''
         env:

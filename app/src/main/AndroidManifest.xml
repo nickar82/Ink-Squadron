@@ -25,6 +25,8 @@
         android:theme="@style/AppTheme"
         android:hardwareAccelerated="true">
 
+        <!-- Android 16: keep the portrait lock on tablets/foldables (temporary opt-out for API 36) -->
+        <property android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY" android:value="true" />
         <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="@string/admob_app_id" />
         <meta-data android:name="com.google.android.gms.games.APP_ID" android:value="@string/game_services_project_id" />
 
