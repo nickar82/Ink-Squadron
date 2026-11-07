@@ -20,9 +20,9 @@ android {
         release {
             if (ksFile != null && new File(ksFile).exists()) {
                 storeFile file(ksFile)
-                storePassword System.getenv("INK_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("INK_KEY_ALIAS")
-                keyPassword System.getenv("INK_KEY_PASSWORD")
+                storePassword System.getenv("INK_KEYSTORE_PASSWORD")?.trim()
+                keyAlias System.getenv("INK_KEY_ALIAS")?.trim()
+                keyPassword System.getenv("INK_KEY_PASSWORD")?.trim()
             }
         }
     }
