@@ -316,7 +316,7 @@ SCENES.settings = {
       else this.confirm = 3;
     });
     this.confirm = Math.max(0, this.confirm - 1 / 60);
-    txt('Ink Squadron v2.0', W / 2, H - 50, 22, { color: '#7a88aa' });
+    txt('Ink Squadron v1.0', W / 2, H - 50, 22, { color: '#7a88aa' });
   },
   back() { go('menu'); return true; }
 };
