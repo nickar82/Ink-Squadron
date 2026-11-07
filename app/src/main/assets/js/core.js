@@ -280,6 +280,7 @@ function toLocal(e) { const r = cv.getBoundingClientRect(); return { x: (e.clien
 let activePointer = null;
 cv.addEventListener('pointerdown', e => {
   audioInit(); const p = toLocal(e);
+  if (typeof Intro !== 'undefined' && Intro.on && M && (scene === SCENES.game || scene === SCENES.arena)) return;
   const multi = scene && scene.multi && !overlayBlocks();
   if (activePointer === null) {
     const h = hitTest(p);

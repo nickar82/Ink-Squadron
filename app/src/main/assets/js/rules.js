@@ -104,6 +104,8 @@ function newMatch(cfg) {
     const f = (save.fails || {})[cfg.level] || 0;
     if (f >= 2) { supply = Math.min(3, Math.floor(f / 2)); cfg = Object.assign({}, cfg, { pPw: Object.assign({}, cfg.pPw), skill: Math.max(.4, cfg.skill - .1 * supply) }); cfg.pPw.shield += supply; cfg.pPw.rocket += Math.min(2, supply); }
   }
+  let eggPw = false;
+  if (camp && save.egg && save.egg.pw) { eggPw = true; cfg = Object.assign({}, cfg, { pPw: Object.assign({}, cfg.pPw) }); for (const k of ['rocket', 'shield', 'bolt']) cfg.pPw[k] = (cfg.pPw[k] || 0) + save.egg.pw; save.egg.pw = 0; persist(); }
   const sides = [
     { idx: 0, dir: -1, color: RED, ships: [], pw: Object.assign({}, cfg.pPw), isAI: false, name: camp ? t('you') : pName(1), lost: 0, hits: 0 },
     { idx: 1, dir: 1, color: (typeof SEASON !== 'undefined' && SEASON.enemy) || BLUE, ships: [], pw: Object.assign({}, cfg.ePw), isAI: camp, isRemote: !!cfg.net, name: camp ? t('enemy') : cfg.net ? (cfg.oppName || t('opponent')).toUpperCase() : pName(2), lost: 0, hits: 0, ai: { skill: cfg.skill || 0, loaded: !!cfg.loaded } }
@@ -123,9 +125,14 @@ function newMatch(cfg) {
   if (cfg.bunkers) placeBunkers(cfg.bunkers, r);
   scene = SCENES.game; computeBL();
   if (typeof onMatchStart === 'function') onMatchStart();
-  if (supply) { M.supply = supply; addFloat(W / 2, H * .45, t('supply', supply), RED, 40); setTimeout(() => mascotSay('thumbs', 'm_supply', { force: true, pri: 3 }), 2600); }
   Mascot.turnN = 0; Mascot.cur = null;
-  startTurn();
+  const tok = M.token;
+  Intro.start(introLabel(), () => {
+    if (M.token !== tok) return;
+    if (eggPw) { addFloat(W / 2, H * .64, t('egg_pw'), RED, 34); mascotSay('thumbs', 'm_egg', { force: true, pri: 3 }); }
+    else if (supply) { M.supply = supply; addFloat(W / 2, H * .45, t('supply', supply), RED, 40); setTimeout(() => mascotSay('thumbs', 'm_supply', { force: true, pri: 3 }), 900); }
+    startTurn();
+  });
 }
 function placeBunkers(n, r) {
   const mid = Math.round(M.G / 2), used = new Set();

@@ -91,6 +91,89 @@ SCENES.lang = {
   back() { if (this.from) { go(this.from); return true; } return false; }
 };
 
+/* ---- MAIN MENU extras: scribbled logo, mute, flying squadron, secret ---- */
+let logoCv = null, logoKey = '';
+function scribbleLogo(gt) {
+  const key = (document.fonts && document.fonts.status) + (gt > 1.5 ? 'b' : 'a');
+  if (!logoCv || logoKey !== key) {
+    logoKey = key; const S = 2, w = 760, h = 300;
+    const mk = () => { const c = document.createElement('canvas'); c.width = w * S; c.height = h * S; const x = c.getContext('2d'); x.scale(S, S); return [c, x]; };
+    const font = sz => `italic 900 ${sz}px ${FONT}`;
+    const letters = x => { x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = font(108); x.fillText('INK', w / 2, h / 2 - 50); x.font = font(100); x.fillText('SQUADRON', w / 2, h / 2 + 42); };
+    const strokeL = (x, dx, dy) => { x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = font(108); x.strokeText('INK', w / 2 + dx, h / 2 - 50 + dy); x.font = font(100); x.strokeText('SQUADRON', w / 2 + dx, h / 2 + 42 + dy); };
+    // hatch-filled letters
+    const [hc, hx] = mk(); const r = mulberry(7);
+    hx.fillStyle = '#c8d8f6'; letters(hx);
+    hx.globalCompositeOperation = 'source-atop'; hx.strokeStyle = NAVY; hx.lineCap = 'round';
+    for (let i = -h; i < w + h; i += 9) { hx.lineWidth = 2.6 + r() * 1.6; hx.beginPath(); hx.moveTo(i + r() * 4, -4); hx.quadraticCurveTo(i - h * .3 + r() * 10, h * .5, i - h * .62 + r() * 4, h + 4); hx.stroke(); }
+    hx.globalCompositeOperation = 'source-over';
+    const [c, x] = mk();
+    x.lineJoin = 'round'; x.strokeStyle = '#fff'; x.lineWidth = 18; strokeL(x, 0, 0);
+    x.save(); x.globalAlpha = .9; x.fillStyle = '#9fb8e8'; x.translate(5, 6); letters(x); x.restore();
+    x.drawImage(hc, 0, 0, w, h);
+    x.strokeStyle = NAVY; x.lineWidth = 4; strokeL(x, 0, 0); x.lineWidth = 2.2; x.globalAlpha = .8; strokeL(x, 2.5, -1.8); x.globalAlpha = .55; strokeL(x, -1.8, 2.2);
+    logoCv = c;
+  }
+  return logoCv;
+}
+function iconSpeaker(x, y, s, on) {
+  ctx.save(); ctx.strokeStyle = NAVY; ctx.fillStyle = on ? '#cfe0ff' : '#e5e9f2'; ctx.lineWidth = Math.max(2.5, s * .07); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x - s * .38, y - s * .14); ctx.lineTo(x - s * .18, y - s * .14); ctx.lineTo(x + s * .06, y - s * .36); ctx.lineTo(x + s * .06, y + s * .36); ctx.lineTo(x - s * .18, y + s * .14); ctx.lineTo(x - s * .38, y + s * .14); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (on) { for (const rr of [.2, .36]) { ctx.beginPath(); ctx.arc(x + s * .08, y, s * rr, -.8, .8); ctx.stroke(); } }
+  else { ctx.strokeStyle = RED; ctx.lineWidth = s * .09; ctx.beginPath(); ctx.moveTo(x + s * .16, y - s * .16); ctx.lineTo(x + s * .42, y + s * .16); ctx.moveTo(x + s * .42, y - s * .16); ctx.lineTo(x + s * .16, y + s * .16); ctx.stroke(); }
+  ctx.restore();
+}
+const isMuted = () => !save.settings.sound && !save.settings.music;
+function toggleMute() { const m = !isMuted(); save.settings.sound = !m; save.settings.music = !m; persist(); if (!m) { audioInit(); sfx.click(); } }
+const menuSq = [{ dx: -170, dy: 0, s: 30 }, { dx: 0, dy: -30, s: 38 }, { dx: 170, dy: 0, s: 30 }].map(p => Object.assign(p, { f: -1 }));
+const menuEgg = new Set();
+let eggPop = null;
+function launchSquadPlane(i) {
+  const p = menuSq[i]; if (p.f >= 0) return;
+  p.f = 0; p.wob = Math.random() * 6; sfx.rocket(); vib(25);
+  if (!(save.egg && save.egg.done)) { menuEgg.add(i); if (menuEgg.size === 3) setTimeout(unlockEgg, 1700); }
+}
+function unlockEgg() {
+  if (save.egg && save.egg.done) return;
+  save.egg = { done: true, credits: 3, pw: 1 }; persist();
+  achAdd('secret'); confetti(); sfx.win(); eggPop = { t: 0 };
+}
+function drawSquad(gt, dt) {
+  const sy = H * .895;
+  menuSq.forEach((p, i) => {
+    const hx = W / 2 + p.dx, hy = sy + p.dy + Math.sin(gt * 2.2 + i) * 6;
+    let x = hx, y = hy, rot = 0, sc = 1;
+    if (p.f >= 0) {
+      p.f += dt;
+      const up = .85, back = .9;
+      if (p.f < up) { const k = p.f / up, e = k * k; y = hy - e * (hy + 140); x = hx + Math.sin(k * 7 + p.wob) * 30 * k; sc = 1 + k * .35; }
+      else if (p.f < up + .35) { y = -400; }
+      else if (p.f < up + .35 + back) { const k = (p.f - up - .35) / back, e = 1 - Math.pow(1 - k, 3); y = H + 120 - e * (H + 120 - hy); x = hx + Math.sin(k * 5 + p.wob) * 24 * (1 - k); }
+      else p.f = -1;
+      // ink trail
+      if (p.f >= 0 && y > -200 && y < H + 100) { ctx.save(); ctx.globalAlpha = .35; ctx.strokeStyle = RED; ctx.lineWidth = 3; ctx.setLineDash([10, 9]); ctx.beginPath(); ctx.moveTo(x, y + p.s * 1.4); ctx.lineTo(x - (x - hx) * .3, y + p.s * 1.4 + 120); ctx.stroke(); ctx.restore(); }
+    }
+    ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc); ctx.translate(-x, -y);
+    drawShip(x, y, p.s, -1, { color: RED, t: gt, exhaust: true }); ctx.restore();
+    if (p.f < 0) ui('sq' + i, hx - 70, hy - 70, 140, 140, { silent: true }, () => { }, () => launchSquadPlane(i));
+  });
+}
+function drawEggPop(dt) {
+  const R = eggPop; R.t += dt; const k = clamp(R.t / .35, 0, 1);
+  ui('egg_block', -300, 0, W + 600, H, { silent: true }, () => { }, () => { });
+  ctx.save(); ctx.fillStyle = `rgba(243,246,252,${.88 * k})`; ctx.fillRect(-200, 0, W + 400, H); ctx.restore();
+  ctx.save(); ctx.translate(W / 2, H / 2); const s = easeBack(k); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2);
+  const w = 580, h = 470, x0 = (W - w) / 2, y0 = H * .38;
+  sketchBox(x0, y0, w, h, { r: 36, fill: '#fff8dc' });
+  const im = MASCOT.img.thumbs; if (im && im.width) { const ih = 320, iw = ih * im.width / im.height; ctx.drawImage(im, W / 2 - iw / 2 + 8, y0 - 245 + Math.sin(R.t * 3) * 4, iw, ih); }
+  star(x0 + 60, y0 + 70, 26, true); star(x0 + w - 60, y0 + 70, 26, true);
+  txt(t('egg_title'), W / 2, y0 + 110, 46, { color: RED, stroke: '#fff', sw: 9, rot: -.03, max: w - 140 });
+  txt(t('ach_unlocked') + ': ' + t('ach_secret'), W / 2, y0 + 168, 22, { color: '#8a6a00', max: w - 60 });
+  [t('egg_a'), t('egg_b')].forEach((l, i) => { coin(x0 + 70, y0 + 222 + i * 50, 13); txt(l, x0 + 100, y0 + 224 + i * 50, 24, { align: 'left', weight: 700, color: NAVY, max: w - 130 }); });
+  bigButton('egg_ok', x0 + 130, y0 + 330, w - 260, 90, 'OK!', { fill: YEL, primary: true, fs: 40 }, () => { eggPop = null; });
+  ctx.restore();
+}
+
 /* ---- MAIN MENU ---- */
 const menuPlanes = [{ x: 120, y: 260, s: .5, a: -.9 }, { x: 600, y: 230, s: .45, a: -2.3 }];
 SCENES.menu = {
@@ -115,9 +198,8 @@ SCENES.menu = {
     for (let i = 0; i < 3; i++) { inkLine(150 + i * 30, ty - 85 + i * 14, 290 + i * 20, ty - 95 + i * 14, RED, 7, 40 + i); inkLine(450 + i * 18, ty - 92 + i * 14, 590 - i * 10, ty - 100 + i * 14, RED, 7, 50 + i); }
     inkLine(110, ty + 70, 640, ty + 38, RED, 9, 61); inkLine(160, ty + 92, 560, ty + 70, RED, 6, 62);
     ctx.restore();
-    ctx.save(); ctx.translate(W / 2, ty); ctx.rotate(-.07); ctx.transform(1, 0, -.12, 1, 0, 0);
-    txt('INK', 0, -48, 104, { color: NAVY, stroke: '#fff', sw: 16, shadow: '#9fb8e8' });
-    txt('SQUADRON', 0, 40, 96, { color: NAVY, stroke: '#fff', sw: 16, shadow: '#9fb8e8' });
+    ctx.save(); ctx.translate(W / 2, ty); ctx.rotate(-.07); ctx.transform(1, 0, -.08, 1, 0, 0);
+    ctx.drawImage(scribbleLogo(gt), -380, -150 + 2, 760, 300);
     ctx.restore();
     txt(t('tag1'), W / 2 + 10, H * .405, 30, { rot: -.06, max: 600 });
     txt(t('tag2'), W / 2, H * .405 + 38, 30, { rot: -.06, max: 600 });
@@ -130,11 +212,12 @@ SCENES.menu = {
     bigButton('howto', bx + bw / 2 + 8, H * .71 - 35, bw / 2 - 8, 70, t('howto'), { fs: 22, icon: iconInfo }, () => { SCENES.howto.page = 0; go('howto'); });
     bigButton('achv', bx, H * .775 - 35, bw / 2 - 8, 70, t('awards'), { fs: 22, icon: iconTrophy }, () => { SCENES.achv.page = 0; go('achv'); });
     ui('flag', bx + bw / 2 + 8, H * .775 - 35, bw / 2 - 8, 70, {}, (x, y, w, h) => { sketchBox(x, y, w, h, { r: 20 }); drawFlag(save.lang || 'en', x + 18, y + h / 2 - 18, 54, 36); txt(LANGS.find(l => l.code === (save.lang || 'en')).name, x + 84, y + h / 2 + 2, 22, { align: 'left', max: w - 96 }); }, () => { SCENES.lang.from = 'menu'; go('lang'); });
-    const sy = H * .895;
-    drawShip(W / 2, sy - 30 + Math.sin(gt * 2.2) * 6, 38, -1, { color: RED, t: gt, exhaust: true });
-    drawShip(W / 2 - 170, sy + Math.sin(gt * 2.2 + 1) * 6, 30, -1, { color: RED, t: gt, exhaust: true });
-    drawShip(W / 2 + 170, sy + Math.sin(gt * 2.2 + 2) * 6, 30, -1, { color: RED, t: gt, exhaust: true });
+    const mdt = Math.min(.05, gt - (this.lgt || gt)); this.lgt = gt;
+    drawSquad(gt, mdt);
     txt(`★ ${totalScore()}`, W - 24, H - 26, 24, { align: 'right', color: '#5a6c9a' });
+    txt('Created by Nickar ©2026', W / 2, H - 26, 20, { color: '#6a7aa0', weight: 700, rot: -.015, max: 360 });
+    ui('mute', 22, 64, 84, 84, {}, (x, y, w, h) => { sketchBox(x, y, w, h, { r: 22, fill: isMuted() ? '#ffe1de' : '#fbfdff', seed: 91 }); iconSpeaker(x + w / 2, y + h / 2, 58, !isMuted()); }, toggleMute);
+    if (eggPop) drawEggPop(mdt);
   },
   back() { return false; }
 };
@@ -274,7 +357,7 @@ SCENES.setup = {
 };
 
 /* ---- HOW TO PLAY ---- */
-const HOWTO_PAGES = 7;
+const HOWTO_PAGES = 8;
 SCENES.howto = {
   page: 0,
   draw(gt) {
@@ -318,6 +401,22 @@ SCENES.howto = {
       txt(t('bunkers'), 170, top + 230, 24, { max: 220 });
       drawRaider(470 + Math.sin(gt) * 40, top + 150, 60, 1, gt, RED); txt(t('raid'), 470, top + 230, 24, { max: 240 });
       drawShip(cx, top + 360, 26, 1, { type: 'fighter', color: BLUE, t: gt }); txt(t('reinforcements'), cx, top + 430, 24, { max: 400 });
+    } else if (P === 7) {
+      // hold the tail → lever appears → slide
+      const cyc = gt % 3.2, sy = top + 300;
+      let off = 0, lifted = cyc > .35 && cyc < 2.9;
+      if (cyc > .6 && cyc < 1.4) off = -easeOut((cyc - .6) / .8) * 2; else if (cyc >= 1.4 && cyc < 2.6) off = -2 + easeOut((cyc - 1.4) / 1.2) * 4; else if (cyc >= 2.6) off = 2 - clamp((cyc - 2.6) / .3, 0, 1) * 2;
+      const sx = cx + off * c;
+      if (lifted) { const lw = c * 5.2, lh = 34, ly = sy - c * 2.55; rrPath(ctx, cx - lw / 2, ly - lh / 2, lw, lh, lh / 2); ctx.fillStyle = 'rgba(159,225,203,.92)'; ctx.fill(); ctx.strokeStyle = NAVY; ctx.lineWidth = 3; ctx.stroke(); ctx.beginPath(); ctx.arc(cx + clamp(off * c, -lw / 2 + 17, lw / 2 - 17), ly, 19, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0F6E56'; ctx.lineWidth = 4; ctx.stroke(); }
+      ctx.save(); const ls = lifted ? 1.07 : 1; ctx.translate(sx, sy); ctx.scale(ls, ls); ctx.translate(-sx, -sy);
+      if (lifted) { ctx.save(); ctx.globalAlpha = .18; ctx.beginPath(); ctx.ellipse(sx + 8, sy + 14, c * 1.4, c * .5, 0, 0, 7); ctx.fillStyle = NAVY; ctx.fill(); ctx.restore(); }
+      drawShip(sx, sy, c, -1, { color: RED, t: gt, exhaust: true }); ctx.restore();
+      // finger on the tail
+      const fy = sy + c * 1.25, press = cyc < .35 ? cyc / .35 : 1;
+      ctx.save(); ctx.globalAlpha = cyc < 2.9 ? 1 : .3; ctx.beginPath(); ctx.arc(sx, fy, 24, 0, 7); ctx.fillStyle = 'rgba(248,210,58,.55)'; ctx.fill(); ctx.strokeStyle = NAVY; ctx.lineWidth = 3; ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx, fy, 24 + 14 * press, -Math.PI / 2, -Math.PI / 2 + press * 6.28); ctx.strokeStyle = YEL; ctx.lineWidth = 5; ctx.stroke(); ctx.restore();
+      txt('0.15 s', cx + 190, top + 380, 26, { color: '#2366c9' });
+      for (const d of [-1, 1]) { ctx.save(); ctx.globalAlpha = .5; inkLine(cx + d * 70, top + 120, cx + d * 170, top + 120, NAVY, 4, 30 + d); ctx.beginPath(); ctx.moveTo(cx + d * 185, top + 120); ctx.lineTo(cx + d * 165, top + 108); ctx.lineTo(cx + d * 165, top + 132); ctx.closePath(); ctx.fillStyle = NAVY; ctx.fill(); ctx.restore(); }
     } else {
       drawShip(cx - 80, top + 330, 40, -1, { color: RED, t: gt, exhaust: true });
       const ink = (Math.sin(gt * 2) + 1) / 2;

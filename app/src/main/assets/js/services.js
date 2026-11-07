@@ -8,7 +8,7 @@ const ACH = [
   ['first_win', '🏁', 1], ['flawless', '⭐', 1], ['boss', '👑', 1], ['cut25', '✂', 25], ['rocket_kill', '🚀', 1],
   ['raider', '💣', 1], ['bunker20', '🧱', 20], ['level25', '25', 1], ['level50', '50', 1], ['level100', '100', 1],
   ['stars100', '★', 100], ['arcade10', '🕹', 1], ['bonus20', '🎈', 1], ['ta5000', '⏱', 1], ['vs_win', '⚔', 1],
-  ['nearby_win', '📶', 1], ['variety', '✈', 1], ['season', '🎃', 1]
+  ['nearby_win', '📶', 1], ['variety', '✈', 1], ['season', '🎃', 1], ['secret', '🛩', 1]
 ];
 const LEADERBOARDS = { stars: 'lb_total_stars', arcade: 'lb_arcade', ta60: 'lb_time_attack_60', ta120: 'lb_time_attack_120', ta180: 'lb_time_attack_180' };
 function achProgress(id) { return save.ach[id] || 0; }

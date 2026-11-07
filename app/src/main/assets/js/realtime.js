@@ -23,7 +23,15 @@ function startRT(kind) {
   };
   M.scenery = sceneryNow(); Mascot.cur = null; Mascot.turnN = 0;
   scene = SCENES.arena; computeBL();
-  if (!vs) nextWave(); else { M.phase = 'countdown'; M.cd = 3.2; }
+  let egg = 0;
+  if (!vs && save.egg && save.egg.credits) { egg = save.egg.credits; M.credits += egg; save.egg.credits = 0; persist(); }
+  if (vs) { M.phase = 'countdown'; M.cd = 3.2; } else M.phase = 'intro';
+  const tok = M.token;
+  Intro.start(introLabel(), () => {
+    if (M.token !== tok) return;
+    if (!vs) nextWave();
+    if (egg) { addFloat(W / 2, H * .55, t('credits_plus', egg), RED, 46); mascotSay('thumbs', 'm_egg', { force: true, pri: 3 }); }
+  });
   if (typeof onMatchStart === 'function') onMatchStart();
 }
 function rtWaveTypes(w) {
@@ -249,7 +257,7 @@ SCENES.arena = {
     }
     drawLines(lw);
     const now = performance.now();
-    for (const id in M.drags) { const d = M.drags[id]; if (!d.ship.alive) { delete M.drags[id]; continue; } if (!d.lifted && now - d.t0 > 300) { d.lifted = true; d.ship.lifted = true; d.x0 = d.px; vib(15); sfx.click(); } }
+    for (const id in M.drags) { const d = M.drags[id]; if (!d.ship.alive) { delete M.drags[id]; continue; } if (!d.lifted && now - d.t0 > 150) { d.lifted = true; d.ship.lifted = true; d.x0 = d.px; vib(15); sfx.click(); } }
     drawShips(dt);
     for (const id in M.drags) { const d = M.drags[id]; if (d.lifted) drawLever(d); }
     for (const sd of M.sides) for (const s of alive(sd)) for (const g of s.guns) if (g.drawing && g.m > 0) { const p = gunPos(s, g); drawPen(p.x, p.y1, sd.color, sd.dir); }
